@@ -1,0 +1,668 @@
+\documentclass[12pt,oneside,openany]{report}
+
+\usepackage[greek,english]{babel}
+\usepackage[iso-8859-7]{inputenc}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{url}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{color}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{wrapfig}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{amsmath} 
+\usepackage{kerkis}
+\usepackage{setspace}
+\usepackage{amsthm} 
+\usepackage{xtab}
+\usepackage{longtable}
+\usepackage{tocloft}
+\usepackage[head=1.25cm, foot=1.25cm, bindingoffset=0.5cm, left=2cm,top=3.25cm,right=2cm,bottom=3.25cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage[bookmarksopen=false, bookmarks = true]{hyperref}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{multirow}
+\usepackage{subfig}
+\usepackage[draft]{fixme}
+
+\cftsetpnumwidth{2em} %fixes spacing problem for tables / figures # >= .10 
+\setlength{\cftfignumwidth}{2.5em}
+
+\newcommand{\gt}{\greektext}
+\newcommand{\lt}{\latintext}
+
+\newcommand{\supervisor}{{\lt Yannis Smaragdakis}}
+\newcommand{\epivlepon}{{\gt Γιάννης Σμαραγδάκης}}
+
+\newcommand{\fullname}{{\lt Georgios Kollias}}
+\newcommand{\onomatepwnymo}{{\gt Γεώργιος Κόλλιας}}
+\newcommand{\thesisTitle}{{\lt Faster Scala Collections with Macros}}
+
+\hypersetup{
+    unicode=true,              % non-Latin characters in Acrobat’s bookmarks
+    pdftoolbar=true,           % show Acrobat’s toolbar?
+    pdfmenubar=true,           % show Acrobat’s menu?
+    pdffitwindow=true,         % page fit to window when opened
+    pdftitle=Faster Scala Collections with Macros,   % title
+    pdfauthor={George Kollias},     % author
+    pdfsubject={Master Thesis},   % subject of the document
+    pdfnewwindow=true,      % links in new window
+    pdfkeywords={}, % list of keywords
+    colorlinks=true,       % false: boxed links; true: colored links
+    linkcolor=black,          % color of internal links
+    citecolor=black,        % color of links to bibliography
+    filecolor=black,      % color of file links
+    urlcolor=black           % color of external links
+}
+
+\lstset{ %
+%language=C,                % choose the language of the code
+basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+showstringspaces=false,         % underline spaces within strings
+keywordstyle=\color{black}\bfseries,
+%columns=fixed,
+backgroundcolor=\color{MyGray},  % choose the background color. You must add \usepackage{color}
+showspaces=false,               % show spaces within strings adding particular underscores
+showtabs=false,                 % show tabs within strings adding particular underscores
+%numbers=left,                   % where to put the line-numbers
+numberstyle=\footnotesize, 
+escapechar={\%},
+}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+%% Basic Style for all languages
+\lstdefinestyle{numbers}{
+  basicstyle=\footnotesize\ttfamily, % the size of the fonts that are used for the code
+  numbers=left,                      % where to put the line-numbers
+  numberstyle=\tiny\color{gray},     % the style that is used for the line-numbers
+  stepnumber=1,                      % the step between two line-numbers. If it's 1, 
+                                     % each line will be numbered
+  numbersep=8pt,                  % how far the line-numbers are from the code
+  backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+  showspaces=false,               % show spaces adding particular underscores
+  showstringspaces=false,         % underline spaces within strings
+  showtabs=false,                 % show tabs within strings adding particular underscores
+  frame=lines,                    % adds a frame around the code
+  rulecolor=\color{black},        % if not set, the frame-color may be changed on line-breaks 
+                                  % within not-black text (e.g. commens (green here))
+  tabsize=2,                      % sets default tabsize to 2 spaces
+  breaklines=true,                % sets automatic line breaking
+  breakatwhitespace=false         % sets if automatic breaks should only happen at whitespace
+}
+
+
+\lstnewenvironment{javaCode}{
+\lstset{ %
+  language=Java,         % the language of the code
+  style=numbers,
+  title=\lstname,        % show the filename of files included with \lstinputlisting;
+                         % also try caption instead of title
+  classoffset=0,
+  deletekeywords={void, boolean, byte, char, short, int, long, float, double},
+  keywordstyle=\color{blue}\bfseries,      % keyword style
+  classoffset=1,
+  morekeywords={void, boolean, byte, char, short, int, long, float, double},
+  keywordstyle=\color{Mahogany}\bfseries,  % primitive style
+  classoffset=0,
+  commentstyle=\color{Orange},             % comment styles
+  morecomment=[l][\color{Orange}]{//},
+  morecomment=[l][\color{red}]{//!},
+  morecomment=[s][\color{Orange}]{/*}{*/},
+  morecomment=[s][\color{Orchid}]{/**}{*/},
+  stringstyle=\color{dkgreen},             % string literal style
+  escapeinside={\%*}{*)}                  % if you want to add a comment within your code
+}
+}{}
+
+
+\renewcommand{\lstlistingname}{Figure}
+%% \renewcommand{\lstlisting}{\thefigure}
+
+%% \newcommand{\sv}[1]{{\small\texttt{#1}}}
+
+%% \newenvironment{code}{\vspace{-0.04in}\samepage\begin{small}\linenumbers[1]
+%% \linenumbersep=6pt}{\end{small}\endlinenumbers\vspace{-0.04in}}
+
+%% \newenvironment{smallcode}{\begin{footnotesize}\samepage\linenumbers[1]
+%% \linenumbersep=6pt}{\end{footnotesize}\endlinenumbers}
+
+%% \newenvironment{nolinecode}{\vspace{-0.04in}\begin{small}}{\end{small}\vspace{-0.04in}}
+
+%% \newenvironment{noverbsmallcode}{
+%% %\vspace{-0.07in}
+%% \begin{footnotesize}
+%% \begin{alltt}
+%% %\fontfamily{cmtt}\fontseries{bx}\selectfont
+%% }
+%% {\end{alltt}\end{footnotesize}
+%% %\vspace{-0.07in}
+%% }
+
+\newcommand{\sv}[1]{{\small\texttt{#1}}}
+\newcommand{\tstamp}{\today}   
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markright{#1}}
+\lhead[\fancyplain{\footnotesize\thesisTitle}{\footnotesize\thesisTitle}]         {\fancyplain{\footnotesize\thesisTitle}{\footnotesize\thesisTitle}}
+\chead[\fancyplain{}{}]                 {\fancyplain{}{}}
+\rhead[\fancyplain{}{}]       {\fancyplain{}{}}
+\lfoot[\fancyplain{\footnotesize\fullname}{\footnotesize\fullname}]                 {\fancyplain{\footnotesize\fullname}{\footnotesize\fullname}}
+\cfoot[\fancyplain{}{}]         {\fancyplain{}{}}
+\rfoot[\fancyplain{\thepage}{\thepage}]  {\fancyplain{\thepage}{\thepage}}
+\renewcommand{\headrulewidth}{0pt}% disable the underline of the header part
+
+\renewcommand{\cfttoctitlefont}{\hfill\Large\bfseries}
+\renewcommand{\cftaftertoctitle}{\hfill}
+\renewcommand{\cftloftitlefont}{\hfill\Large\bfseries}
+\renewcommand{\cftafterloftitle}{\hfill}
+\renewcommand{\cftlottitlefont}{\hfill\Large\bfseries}
+\renewcommand{\cftafterlottitle}{\hfill}
+
+\tocloftpagestyle{fancy}
+\setlength\cftbeforetoctitleskip{0cm}
+\setlength\cftbeforeloftitleskip{0cm}
+\setlength\cftbeforelottitleskip{0cm}
+
+\setcounter{tocdepth}{3}
+\setcounter{secnumdepth}{3} 
+
+% Theorem's, definitions, lemmas, ...
+
+\theoremstyle{plain}% default
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{prop}[thm]{Proposition}
+\newtheorem*{cor}{Corollary}
+\newtheorem*{KL}{Klein's Lemma}
+
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}[section]
+\newtheorem{conj}{Conjecture}[section]
+\newtheorem{exmp}{Example}[section]
+
+\theoremstyle{remark}
+\newtheorem*{rem}{Remark}
+\newtheorem*{note}{Note}
+\newtheorem{case}{Case}
+
+
+
+\begin{document}
+\numberwithin{algorithm}{chapter}
+
+\definecolor{MyGray}{rgb}{0.9,0.9,0.9}
+
+\titlespacing*{\chapter}{0pt}{-40pt}{20pt}
+\titleformat{\chapter }[display]
+  {\normalfont\huge\bfseries\centering}{\chaptertitlename\ \thechapter}{20pt}{\Huge}
+
+
+  
+\pagestyle{empty}
+\begin{centering}
+\begin{figure}
+\vspace{-0.8in}
+\centering
+\includegraphics[scale=0.2]{figures/logo.eps}
+\end{figure}
+\vspace{-0.2in} 
+\textbf{\fontsize{14pt}{16.8pt} \bf NATIONAL AND KAPODISTRIAN UNIVERSITY OF ATHENS\\}
+\vspace{0.2in}
+{\fontsize{12pt}{14.4pt}
+  \bf SCHOOL OF SCIENCES \\ \vspace{0.2in} 
+  DEPARTMENT OF INFORMATICS AND TELECOMMUNICATIONS \\ \vspace{0.2in} 
+  POSTGRADUATE STUDIES PROGRAM
+}
+\vspace{1.0in}
+
+{\fontsize{12pt}{14.4pt}  \bf MASTER THESIS \\} \vspace{0.7in}
+{\fontsize{16pt}{19.2pt}\bf Faster Scala Collections with Macros \\ }
+\vspace{0.4in}{\fontsize{12pt}{14.4pt}  \bf \fullname }\vspace{0.6in}
+
+{\fontsize{12pt}{14.4pt}  
+  \begin{tabular}{cl}
+    {\bf Supervisor:} & {\bf \supervisor},  Associate Professor NKUA \\
+  \end{tabular}
+} \\
+\vspace{1.5in}
+{\fontsize{12pt}{14.4pt} \bf ATHENS \\ \vspace{0.2in} MAY 2013\\}
+\end{centering}
+
+%\clearpage\newpage%\mbox{}\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage\newpage%\mbox{}\newpage
+\pagestyle{empty}
+\begin{centering}
+\begin{figure}
+\vspace{-0.8in}
+\centering
+\includegraphics[scale=0.2]{figures/logo.eps}
+\end{figure}
+\vspace{-0.2in} 
+\textbf{\gt \fontsize{14pt}{16.8pt} \bf ΕΘΝΙΚΟ ΚΑΙ ΚΑΠΟΔΙΣΤΡΙΑΚΟ ΠΑΝΕΠΙΣΤΗΜΙΟ ΑΘΗΝΩΝ\\}
+\vspace{0.2in}
+{\gt \fontsize{12pt}{14.4pt}  \bf ΣΧΟΛΗ ΘΕΤΙΚΩΝ ΕΠΙΣΤΗΜΩΝ\\
+\vspace{0.2in}
+ΤΜΗΜΑ ΠΛΗΡΟΦΟΡΙΚΗΣ ΚΑΙ ΤΗΛΕΠΙΚΟΙΝΩΝΙΩΝ\\
+\vspace{0.2in}
+ΠΡΟΓΡΑΜΜΑ ΜΕΤΑΠΤΥΧΙΑΚΩΝ ΣΠΟΥΔΩΝ}
+\vspace{1.0in}
+
+{\gt \fontsize{12pt}{14.4pt}  \bf ΔΙΠΛΩΜΑΤΙΚΗ ΕΡΓΑΣΙΑ}
+%
+\vspace{0.7in}
+
+
+% title assumed to be 3 lines long
+{\gt\fontsize{16pt}{19.2pt}\bf
+  Γρηγορότερες Δομές Δεδομένων στη {\lt Scala} \\ 
+  με χρήση {\lt Macros} \\
+}
+
+\vspace{0.4in}
+
+{\gt \fontsize{12pt}{14.4pt}  \bf \onomatepwnymo }
+
+\vspace{0.6in}
+
+{\gt \fontsize{12pt}{14.4pt}  
+\begin{tabular}{cl}
+{\bf Επιβλέπων:} & {\bf \epivlepon}, Αναπληρωτής Καθηγητής ΕΚΠΑ
+\end{tabular}}
+
+
+\vspace{1.5in}
+
+
+{\gt \fontsize{12pt}{14.4pt}  \bf ΑΘΗΝΑ \\\vspace{0.2in} ΜΑΙΟΣ 2013 \\}
+\end{centering}
+
+
+%\clearpage\newpage%\mbox{}\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\pagestyle{empty}
+\begin{minipage}{\textwidth}
+\begin{centering}
+\fontsize{12pt}{14.4pt}
+
+{\bf
+  MASTER THESIS \\ \vspace{1in}
+  %% title assumed to be 3 lines long
+  Faster Scala Collections with Macros \\
+  %% should be 16pt
+  \vspace{1.5in} \fullname \\
+  \vspace{0.1in} RN: {\gt M1049} \\
+  \vspace{1.2in}
+}
+\end{centering}
+
+%% Supervisor
+
+{\bf\hspace*{1.4in} SUPERVISOR: } \\\\
+{\bf\hspace*{2.0in} \supervisor}, Associate Professor NKUA \\
+
+\vspace{1.5in}
+
+%% Committee
+{\bf\hspace*{1.4in} THESIS COMMITTEE: } \\\\
+
+{\bf\hspace*{1.6in} \supervisor}, Associate Professor NKUA\\
+{\bf\hspace*{1.6in} Panos Rondogiannis}, Associate Professor NKUA
+
+\end{minipage}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\pagestyle{empty}
+\begin{minipage}{\textwidth}
+%\vspace{1in}
+\begin{centering}
+\gt\fontsize{12pt}{14.4pt}
+
+{\bf
+  ΔΙΠΛΩΜΑΤΙΚΗ ΕΡΓΑΣΙΑ \\ \vspace{1in}
+  %% title assumed to be 3 lines long
+  Γρηγορότερες Δομές Δεδομένων στη {\lt Scala} \\ 
+  με χρήση {\lt Macros} \\
+  %% should be 16pt
+  \vspace{1.5in} \onomatepwnymo \\
+  \vspace{0.1in} ΑΜ: Μ1049 \\
+  \vspace{1.2in}
+}
+\end{centering}
+
+%% Supervisor
+\gt
+
+{\bf\hspace*{1.1in} ΕΠΙΒΛΕΠΩΝ: } \\\\
+{\bf\hspace*{1.7in} \epivlepon}, Αναπληρωτής Καθηγητής ΕΚΠΑ \\
+
+\vspace{1.5in}
+
+%% Committee
+{\bf\hspace*{1.1in} ΕΞΕΤΑΣΤΙΚΗ ΕΠΙΤΡΟΠΗ: } \\\\
+
+{\bf\hspace*{1.3in} \epivlepon}, Αναπληρωτής Καθηγητής ΕΚΠΑ\\
+{\bf\hspace*{1.3in} Παναγιώτης Ροντογιάννης}, Αναπληρωτής Καθηγητής ΕΚΠΑ
+
+\lt
+\end{minipage}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\pagestyle{empty}
+\begin{doublespacing}
+\chapter*{\gt Περίληψη}
+\end{doublespacing}
+\thispagestyle{empty}
+\normalsize
+\doublespacing
+\paragraph[]{}
+\gt
+\input{chapters/perilipsi}
+\vfill
+\begin{table}
+\doublespacing
+{\bf ΘΕΜΑΤΙΚΗ ΠΕΡΙΟΧΗ:} ... \\
+{\bf ΛΕΞΕΙΣ ΚΛΕΙΔΙΑ:} ...
+\end{table}
+%\clearpage\newpage\mbox{}\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\lt
+\begin{doublespacing}
+\chapter*{Abstract}
+\end{doublespacing}
+\thispagestyle{empty}
+\normalsize
+\doublespacing
+\paragraph{}
+\lt
+\input{chapters/abstract}
+\vfill
+\begin{table}
+\doublespacing
+{\bf SUBJECT AREA:} ... \\
+{\bf KEYWORDS:} ...
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\clearpage\newpage\mbox{}\newpage
+%\begin{minipage}{\textwidth}
+%\vspace{1.05in}
+%\hspace{4.5in}
+%\normalsize{\it Αφιέρωση}
+%\end{minipage}
+%\clearpage\newpage\mbox{}\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\lt
+
+\chapter*{Acknowledgements}
+\thispagestyle{empty}
+\normalsize
+\onehalfspacing
+\paragraph[]{}
+\input{chapters/acknowledgments}
+\clearpage%\newpage\mbox{}\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{doublespacing}
+%every chapter should be on the right side (odd page no.)
+
+
+\tableofcontents
+\thispagestyle{empty}
+\clearpage\newpage%\mbox{}\newpage
+\listoffigures
+\thispagestyle{empty}
+\clearpage\newpage%\mbox{}\newpage
+\listoftables 
+\thispagestyle{empty}
+\clearpage\newpage%\mbox{}\newpage
+
+%\renewcommand{\listalgorithmname}{Κατάλογος Αλγόριθμων}
+%\listofalgorithms
+%\end{doublespacing}
+\clearpage
+
+
+
+\pagestyle{fancyplain}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\lt
+
+\chapter*{Preface}
+\thispagestyle{empty}
+\normalsize
+\onehalfspacing
+\paragraph[]{}
+\input{chapters/preface}
+\clearpage%\newpage\mbox{}\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\lt
+\chapter[Introduction]{Introduction}
+\paragraph[]{} 
+\lt
+\input{chapters/introduction}
+
+\clearpage\newpage%\mbox{}\newpage
+\onehalfspacing
+
+
+\chapter[Background]{Background}
+% background.tex: file with chapter contents
+\input{chapters/background}
+
+\chapter[Over-Approximating Escaped Objects]{Over-Approximating Escaped Objects}
+% escape.tex: file with chapter contents
+\input{chapters/escape}
+
+\chapter[Safe Publication]{Safe Publication}
+% publication.tex: file with chapter contents
+\input{chapters/publication}
+
+
+%% \chapter[Dominance]{Dominance}
+%% % dominance.tex: file with chapter contents
+%% \input{chapters/dominance}
+
+%% \chapter[Adding Context-Sensitivity]{Adding Context-Sensitivity}
+%% % context.tex: file with chapter contents
+%% \input{chapters/context}
+
+%% \chapter[Dominance Revisited: Introducing Context]{Dominance Revisited: \mbox{Introducing Context}}
+%% % dom-context.tex: file with chapter contents
+%% \input{chapters/dom-context}
+
+\chapter[Experimental Results]{Experimental Results}
+% experiments.tex: file with chapter contents
+\input{chapters/experiments}
+
+\chapter[Related Work]{Related Work}
+% related.tex: file with chapter contents
+\input{chapters/related}
+
+%% \chapter[Future Work]{Future Work}
+%% % future.tex: file with chapter contents
+%% \input{chapters/future}
+
+\clearpage
+\chapter[Conclusions]{Conclusions}
+% conclusion.tex: file with chapter contents
+\input{chapters/conclusion}
+
+
+\clearpage\newpage%\mbox{}\newpage
+
+
+
+%% \chapter*{Terminology}
+%% \addcontentsline{toc}{chapter}{Terminology}
+
+%% \begin{center}
+%% \begin{longtable}{|c|c|}
+
+%% %\hline 
+%% %   \multicolumn{1}{|c|}{\gt \textbf{Ξενόγλωσσος Όρος}} &
+
+%% %   \multicolumn{1}{|c|}{\gt \textbf{Ελληνικός Όρος}} \\\hline
+%% %\endfirsthead
+
+%% %\multicolumn{1}{c}{Συνέχεια από τη προηγούμενη σελίδα}\\
+%% %\hline 
+%% %   \multicolumn{1}{|c|}{\gt \textbf{Ξενόγλωσσος Όρος}} &
+
+%% %   \multicolumn{1}{|c|}{\gt \textbf{Ελληνικός Όρος}} \\\hline
+%% %\endhead
+
+%% %This is the footer for all pages except the last page of the table...
+%% %  \multicolumn{2}{l}{{Συνέχεια στην επόμενη σελίδα}} \\
+%% %\endfoot
+
+%% %This is the footer for the last page of the table...
+%% %  \\[-1.8ex] \hline\ldots
+%% %\endlastfoot
+
+
+%% \hline
+%% \gt \bf Ξενόγλωσσος Όρος & \gt \bf Ελληνικός Όρος\\\hline
+%% %Α
+%% %\lt accept states & καταστάσεις αποδοχής\\\hline
+%% %Β
+%% %C
+%% \lt CXXXXXX & \gt χχχχχχχχχχχχχχχχχ\\\hline
+%% %D
+%% %E
+%% %F
+%% %G
+%% %H
+%% \lt HXXXXXX & \gt χχχχχχχχχχχχχχχχχχ\\\hline
+%% %I
+%% %J
+%% %K
+%% %L
+%% %M
+%% %N
+%% %O
+%% %P
+%% %Q
+%% %R
+%% %S
+%% %T
+%% %U
+%% %V
+%% %W
+%% %X
+%% %Y
+%% %Z
+%% \end{longtable}
+%% \end{center}
+
+
+%\clearpage\newpage\mbox{}\newpage
+%\chapter*{Συντμήσεις-Αρκτικόλεξα}
+%\addcontentsline{toc}{chapter}{Συντμήσεις - Αρκτικόλεξα}
+\chapter*{Acronyms and Abbreviations}
+\addcontentsline{toc}{chapter}{Acronyms and Abbreviations}
+
+\begin{center}
+\begin{longtable}{|c|l|}
+
+\hline  
+   \multicolumn{1}{|c|}{\textbf{Abbreviation}} &
+
+   \multicolumn{1}{|c|}{\textbf{Full Name}} \\\hline
+\endfirsthead
+
+%This is the header for the remaining page(s) of the table...
+
+\multicolumn{1}{c}{Continued on next page \ldots}\\
+\hline 
+   \multicolumn{1}{|c|}{\textbf{Abbreviation}} &
+
+   \multicolumn{1}{|c|}{\textbf{Full Name}} \\\hline
+\endhead
+
+%This is the footer for all pages except the last page of the table...
+  \multicolumn{2}{l}{Continued on next page \ldots} \\
+\endfoot
+
+%This is the footer for the last page of the table...
+%  \\[-1.8ex] \hline
+\endlastfoot
+
+
+\hline
+%\lt CCW & \lt Counter-Clockwise\kill
+%Α
+%Β
+%C
+%\lt CCW & \lt Counter-Clockwise\\\hline
+%D
+%E
+%F
+%G
+%H
+%I
+%\lt 1obj         & \lt 1-object-sensitive analysis \\ \hline
+%\lt 1obj+H       & \lt 1-object-sensitive+heap analysis \\ \hline
+% \lt 1call+H      & \lt 1-call-site-sensitive+heap analysis \\ \hline
+% \lt 2obj         & \lt 2-object-sensitive analysis \\ \hline
+% \lt 2type+1H     & \lt 2-type-sensitive+heap analysis \\ \hline
+% \lt 2full+1H     & \lt 2-full-object-sensitive+heap analysis \\ \hline
+% \lt 2obj+H       & \lt 2-object-sensitive+heap analysis \\ \hline
+% \lt 1type1obj+1H & \lt 2-full-type-object-sensitive+heap analysis \\ \hline
+%J
+% \lt JVM & \lt Java Virtual Machine \\ \hline
+% \lt JLS & \lt Java Language Specification \\ \hline
+%K
+%L
+% \lt LB & \lt LogicBlox Inc. \\ \hline
+%M
+%N
+%O
+%P
+%Q
+%R
+%S
+%T
+%U
+%V
+%W
+%X
+%Y
+%Z
+\end{longtable}
+\end{center}
+
+\lt
+
+
+\clearpage
+
+\appendix
+\addcontentsline{toc}{chapter}{Appendices}
+\chapter{Escape Analysis Code}
+% code.tex: file with chapter contents
+\input{chapters/code}
+
+% \providecommand{\noopsort}[1]{}
+% \bibliographystyle{plain}
+% \chapter*{References}
+% \addcontentsline{toc}{chapter}{\lt References}
+% \lt
+% {  \renewcommand{\chapter}[1]{}
+%    \renewcommand{\bibname}{}
+%    \bibliography{mybiblio}
+% }
+
+\end{document}

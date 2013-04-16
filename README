@@ -1,0 +1,4 @@
+if no .bib file use make pdf
+else use make final
+
+Changes need to be made for use in an undergraduate thesis. Check file Ypodeigmata.Ergasion.zip for details.
