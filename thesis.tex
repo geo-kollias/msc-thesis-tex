@@ -27,6 +27,7 @@
 \usepackage{multirow}
 \usepackage{subfig}
 \usepackage[draft]{fixme}
+\usepackage[colorinlistoftodos]{todonotes}
 
 \cftsetpnumwidth{2em} %fixes spacing problem for tables / figures # >= .10 
 \setlength{\cftfignumwidth}{2.5em}
@@ -423,6 +424,12 @@ escapechar={\%},
 \thispagestyle{empty}
 \clearpage\newpage%\mbox{}\newpage
 \listoftables 
+\thispagestyle{empty}
+\clearpage\newpage%\mbox{}\newpage
+\listoffixmes
+\thispagestyle{empty}
+\clearpage\newpage%\mbox{}\newpage
+\listoftodos
 \thispagestyle{empty}
 \clearpage\newpage%\mbox{}\newpage
 
