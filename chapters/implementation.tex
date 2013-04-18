@@ -8,30 +8,44 @@ Java  doesn't support any notion of function inherently, at least until Java 7,
 this anonymous function should be translated somehow in constructs that are
 supported from Java bytecode. So below we see how scalac translates the
 internally the trivial Scala program below:\\
+\fxfatal{src code} \\
+%package src.main.scala
+% object ListMapCompilation extends App {
+%   List(1, 2, 3).map(_ + 1)
+% }
 
-package src.main.scala
+\fxfatal{scalac traslated code}
+% package src.main.scala {
+%   object ListMapCompilation extends Object with App {
+%     def <init>(): src.main.scala.ListMapCompilation.type = {
+%       ListMapCompilation.super.<init>();
+%       ()
+%     };
+%     immutable.this.List.apply[Int](scala.this.Predef.wrapIntArray(Array[Int]{1,
+% 2, 3})).map[Int, List[Int]]({
+%       @SerialVersionUID(0) final <synthetic> class $anonfun extends
+% scala.runtime.AbstractFunction1[Int,Int] with Serializable {
+%         def <init>(): anonymous class $anonfun = {
+%           $anonfun.super.<init>();
+%           ()
+%         };
+%         final def apply(x$1: Int): Int = x$1.+(1)
+%       };
+%       (new anonymous class $anonfun(): Int => Int)
+%     }, immutable.this.List.canBuildFrom[Int]())
+%   }
+% }
 
-object ListMapCompilation extends App {
-  List(1, 2, 3).map(_ + 1)
-}
+We can see that scalac converts the _ + 1 function into a block of code (code
+between two braces), where a class, called \$anonfun, is defined. That class
+extends the AbstractFunction1[Int,Int] class, which is an abstract
+class that represents the functions that take one integer argument and return
+another integer. Inside the class an apply method is defined which is called
+whenever we apply the class' objects to one integer argument. The apply's body
+returns  its argument incremented by one,  e.g., val a1 = new \$anonfun();
+a1(5); returns 6. Just after the class definition scalac creates a new object
+of this class and it's what actually returned from that block of code.
+Eventually the _ + 1 is substituted with an object of a subclass of a class
+representing functions internally, which leads us to the conclusion that the
+scala source-level closures are translated to function objects.
 
-package src.main.scala {
-  object ListMapCompilation extends Object with App {
-    def <init>(): src.main.scala.ListMapCompilation.type = {
-      ListMapCompilation.super.<init>();
-      ()
-    };
-    immutable.this.List.apply[Int](scala.this.Predef.wrapIntArray(Array[Int]{1,
-2, 3})).map[Int, List[Int]]({
-      @SerialVersionUID(0) final <synthetic> class $anonfun extends
-scala.runtime.AbstractFunction1[Int,Int] with Serializable {
-        def <init>(): anonymous class $anonfun = {
-          $anonfun.super.<init>();
-          ()
-        };
-        final def apply(x$1: Int): Int = x$1.+(1)
-      };
-      (new anonymous class $anonfun(): Int => Int)
-    }, immutable.this.List.canBuildFrom[Int]())
-  }
-}
