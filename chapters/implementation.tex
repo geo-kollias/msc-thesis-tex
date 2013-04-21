@@ -47,5 +47,25 @@ a1(5); returns 6. Just after the class definition scalac creates a new object
 of this class and it's what actually returned from that block of code.
 Eventually the _ + 1 is substituted with an object of a subclass of a class
 representing functions internally, which leads us to the conclusion that the
-scala source-level closures are translated to function objects.
+scala source-level closures are translated to function objects. Below we attach
+the basic map implementation in the standard Scala library:
 
+def map[B, That](f: A => B)(implicit bf: CanBuildFrom[Repr, B, That]): That =
+{
+    def builder = {
+      val b = bf(repr)
+      b.sizeHint(this)
+      b
+    }
+    val b = builder
+    for (x <- this) b += f(x)
+    b.result
+}
+
+Here f is the function object scalac passed during the map call. f(x) is a
+normal method call on object f and it will be expanded to f.apply(x). We can
+easily see that f's runtime type will, usually, be different on each map call
+since the functions we pass are generally different. Such calls are called
+mega-morphic virtual calls and, currently, are not inlined from the JVM. So on
+each map we generally have the added overhead of a dynamic call to the passed
+function object. It's a relatively new problem that came up along with the 
