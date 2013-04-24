@@ -1,17 +1,20 @@
+Section: What declosurify does
+
 For understanding better what declosurify does let's see how List(1, 2, 3).map(_
-+ 1) \fxfatal{code format} is translated from both scalac and declosurify.
-List(1, 2, 3).map(_ + 1) is a shortcut for List(1, 2, 3).map(x => x + 1), where
-x => x + 1 is an anonymous function that increments its argument by one.
++ 1) \fxfatal{code format} is translated from both scalac and declosurify point
+of views. List(1, 2, 3).map(_ + 1) is a shortcut for List(1, 2, 3).map(x => x +
+1), where x => x + 1 is an anonymous function that returns its
+argument incremented by one.
 Applying that function to the List(1, 2, 3) will result to a new list List(2,
 3, 4). Since Scala code is translated into Java bytecode at the end and, since,
-Java  doesn't support any notion of function inherently, at least until Java 7,
+Java  doesn't support any notion of function inherently, at least up to Java 7,
 this anonymous function should be translated somehow in constructs that are
-supported from Java bytecode. So below we see how scalac translates the
-internally the trivial Scala program below:\\
+supported from Java bytecode. So below we see how scalac translates the trivial
+Scala program internally:\\
 \fxfatal{src code} \\
-%package src.main.scala
+% package src.main.scala
 % object ListMapCompilation extends App {
-%   List(1, 2, 3).map(_ + 1)
+%   def f = List(1, 2, 3).map(_ + 1)
 % }
 
 \fxfatal{scalac traslated code}
@@ -21,8 +24,9 @@ internally the trivial Scala program below:\\
 %       ListMapCompilation.super.<init>();
 %       ()
 %     };
-%     immutable.this.List.apply[Int](scala.this.Predef.wrapIntArray(Array[Int]{1,
-% 2, 3})).map[Int, List[Int]]({
+%     def f(): List[Int] =
+% immutable.this.List.apply[Int](scala.this.Predef.wrapIntArray(Array[Int]{1, 2,
+% 3})).map[Int, List[Int]]({
 %       @SerialVersionUID(0) final <synthetic> class $anonfun extends
 % scala.runtime.AbstractFunction1[Int,Int] with Serializable {
 %         def <init>(): anonymous class $anonfun = {
@@ -36,19 +40,21 @@ internally the trivial Scala program below:\\
 %   }
 % }
 
-We can see that scalac converts the _ + 1 function into a block of code (code
-between two braces), where a class, called \$anonfun, is defined. That class
+
+We can see that scalac converts the _ + 1 function into a block of code
+(piece of code between two braces), where a class, called \$anonfun, is defined.
+That class
 extends the AbstractFunction1[Int,Int] class, which is an abstract
 class that represents the functions that take one integer argument and return
 another integer. Inside the class an apply method is defined which is called
-whenever we apply the class' objects to one integer argument. The apply's body
+whenever we apply a class' object to one integer argument. The apply's body
 returns  its argument incremented by one,  e.g., val a1 = new \$anonfun();
 a1(5); returns 6. Just after the class definition scalac creates a new object
 of this class and it's what actually returned from that block of code.
 Eventually the _ + 1 is substituted with an object of a subclass of a class
 representing functions internally, which leads us to the conclusion that the
-scala source-level closures are translated to function objects. Below we attach
-the basic map implementation in the standard Scala library:
+scala source-level closures are translated to function class objects. Below we
+attach the basic map implementation in the standard Scala library:
 
 def map[B, That](f: A => B)(implicit bf: CanBuildFrom[Repr, B, That]): That =
 {
@@ -62,10 +68,85 @@ def map[B, That](f: A => B)(implicit bf: CanBuildFrom[Repr, B, That]): That =
     b.result
 }
 
-Here f is the function object scalac passed during the map call. f(x) is a
+Here f is the function object scalac passed during the map call, i.e. the
+object resulted from new \$anonfun() above. f(x) is a
 normal method call on object f and it will be expanded to f.apply(x). We can
 easily see that f's runtime type will, usually, be different on each map call
 since the functions we pass are generally different. Such calls are called
 mega-morphic virtual calls and, currently, are not inlined from the JVM. So on
 each map we generally have the added overhead of a dynamic call to the passed
-function object. It's a relatively new problem that came up along with the 
+function object. Even worse, the lack of knowledge of what goes on inside the
+virtual call prevents all kinds of crucial optimizations: loop unrolling,
+range-check elimination, all kinds of prefetching and alias analyses, as we
+explained in the previous chapter.
+
+Let's see how declosurify translates a very similar piece of code:
+
+% package src.main.scala
+% object ListMapCompilation extends App {
+%   def f = List(1, 2, 3).macroMap(_ + 1)
+% }
+
+The only difference here is the use of macroMap instead of the plain map. It's
+translated into:
+
+% package src.main.scala {
+%   object ListMapCompilation extends Object with App {
+%     def <init>(): src.main.scala.ListMapCompilation.type = {
+%       ListMapCompilation.super.<init>();
+%       ()
+%     };
+%     def f(): List[Int] = {
+%       private def local1(x$1: Int): Int = x$1.+(1);
+%       val buf: scala.collection.mutable.Builder[Int,List[Int]] =
+% newBuilder[Int]();
+%       var these: List[Int] =
+% immutable.this.List.apply[Int](scala.this.Predef.wrapIntArray(Array[Int]{1, 2,
+% 3}));
+%       while(these.isEmpty().unary_!()){
+%         buf.+=(local1(these.head()));
+%         these = these.tail()
+%       };
+%       buf.result()
+%     }
+%   }
+% }
+
+Here we see that there is no explicit call to any map method. Instead the
+list's traveral happens directly within a while loop where the local1 local free
+method is applied to all list's elements. The local1 method is called a free
+method since it's not directly attached to any class or object. During the
+scalac's ``flatten'' phase, it will be lifted and become a ListMapCompilation's
+method with a new mangled name. In particular the code above will become:
+
+% package src.main.scala {
+%   object ListMapCompilation extends Object with App {
+%     def f(): List = {
+%       val buf: collection.mutable.Builder =
+% scala.collection.immutable.List.newBuilder();
+%       var these: List =
+% immutable.this.List.apply(scala.this.Predef.wrapIntArray(Array[Int]{1, 2, 3}));
+%      
+%       while(these.isEmpty().unary_!()){
+%         buf.+=(scala.Int.box(ListMapCompilation.this.local1\$1(
+%scala.Int.unbox(these.hea d % ()))));
+%         these = these.tail().$asInstanceOf[List]()
+%       };
+%       buf.result().$asInstanceOf[List]()
+%     };
+%     final private[this] def local1$1(x$1: Int): Int = x$1.+(1);
+%     def <init>(): src.main.scala.ListMapCompilation.type = {
+%       ListMapCompilation.super.<init>();
+%       ListMapCompilation.this.$asInstanceOf[App$class]()./*App$class*/$init$();
+%       ()
+%     }
+%   }
+% }
+
+As we can see, now local1is lifted to local1\$1 and its receiver became
+ListMapCompilation.this which will remain unchanged during the program
+execution and so it's much easier for JVM to inline the local1\$1 method and
+reason about further optimizations.
+
+
+Section: How it does it

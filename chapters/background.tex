@@ -82,8 +82,7 @@ functions are called at various times.  Typically then the JIT does not inline
 any of them, and instead opts for a virtual call.  Alas, while the virtual call
 itself isn’t too bad the lack of knowledge of what goes on inside the virtual
 call prevents all kinds of crucial optimizations: loop unrolling, range-check
-elimination, all kinds of prefetching and alias analyses.  In short, we lose our
-10x speedup.
+elimination, all kinds of prefetching and alias analyses.
 
 One solution  would be to make the inner function call a static (final) call -
 then the JIT can inline. Of course, if we do that we need an iterator for the
@@ -101,7 +100,7 @@ solutions to pure educational solutions, demonstrating possible ``megamorphic
 inlining friendly'' coding styles.
 
 Scala, as most of the modern JVM languages, is no exception and it suffers from
-The Problem too and it actually affects negatively its adoption. At the end of
+The Problem too and, actually, it affects its adoption negatively. At the end of
 2011 an email from a Yammer's employer towards the TypeSafe's CEO, about Scala
 shortcomings, leaked to the public {cite
 http://www.infoq.com/news/2011/11/yammer-scala}. Most complaints were related
