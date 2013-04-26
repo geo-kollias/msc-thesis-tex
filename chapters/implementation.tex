@@ -73,12 +73,12 @@ object resulted from new \$anonfun() above. f(x) is a
 normal method call on object f and it will be expanded to f.apply(x). We can
 easily see that f's runtime type will, usually, be different on each map call
 since the functions we pass are generally different. Such calls are called
-mega-morphic virtual calls and, currently, are not inlined from the JVM. So on
+mega-morphic virtual calls and, currently, are not inlined from the JVM as we
+exlained in the previous chapter. So on
 each map we generally have the added overhead of a dynamic call to the passed
 function object. Even worse, the lack of knowledge of what goes on inside the
-virtual call prevents all kinds of crucial optimizations: loop unrolling,
-range-check elimination, all kinds of prefetching and alias analyses, as we
-explained in the previous chapter.
+virtual call prevents all kinds of crucial optimizations such as loop unrolling,
+range-check elimination and all kinds of prefetching and alias analyses.
 
 Let's see how declosurify translates a very similar piece of code:
 
@@ -143,10 +143,60 @@ method with a new mangled name. In particular the code above will become:
 %   }
 % }
 
-As we can see, now local1is lifted to local1\$1 and its receiver became
+As we can see now, local1is lifted to local1\$1 and its receiver became
 ListMapCompilation.this which will remain unchanged during the program
 execution and so it's much easier for JVM to inline the local1\$1 method and
 reason about further optimizations.
 
 
-Section: How it does it
+Section: How declosurify works
+
+
+Subsection: Putting declosurify functionality in the Scala standard library
+
+Initially declosurify could be used as a library adding the methods macroMap
+and macroForeach on all Scala collections that implemented the TraversableOnce
+interface and Arrays, through Scala's implicit conversions. Since, ultimately,
+we would like to substitute default map and foreach methods with macroMap and
+macroForeach respectively, we had to move them inside the Scala standard
+library. Scala standard library doesn't have access to the new compile-time
+reflection capabilities since it doesn't depend on the scala-reflect and
+scala-compiler packages. As a solution, we used the scala compiler's FastTrack
+mechanism. Scala compiler has a low level mechanism to invoke macro expansions
+for builtin macros. One such builtin macro is the reify function itself  we saw
+in the previous chapter. FastTrack module is basically a registry where you
+link method's compiler Symbols with special handler methods. For example,
+whenever the compiler sees a Symbol representing a reify's application, it calls
+its respective FastTrack special handler which has access to reify appication's
+call-site context and all of  its arguments' Abstract Syntax Trees (ASTs),
+through pattern matching. Call-site context object, generally, holds call-site
+information like the macro application's enclosing method, its enclosing class,
+its line in the file. The ASTs contain the internal representation of
+the macro application like ``List(1, 2, 3).macroMap(_ + 1)'' i.e., the receiver
+object, the macroMap or macroForeach method call and its function argument. The
+pattern matching happens upon the ASTs so, theoritically, we can choose to
+match successfully against ``List(1,2,3).macroMap(_ + 1)'' but not against ``val
+r = List(1,2,3); r.macroMap(_ + 1)'' depending on our needs. If the pattern
+matching is successful, its respective compiler handler will eventually
+generate the AST which replaces the macro application's AST at the call-site,
+completing that way that macro's expansion. In our case, whenever scalac
+finds a Symbol of an application of the TraversableLike trait's macroMap or
+macroForeach method, it triggers the expansion we will describe in the next
+subsection.
+
+Regular Scala macros implementations can be generic in the sense that they can
+be customized with type parameters as any regular Scala method. On top of that,
+Scala compiler allows you to ``tag'' each of these type parameters with special
+compiler-generated objects, of type (Weak)TypeTag [cite], that store the type
+parameters' full types on each call and make them available at runtime. In
+short, it's the Scala's solution against JVM's type erasure. This machinery is
+especially useful for macros, since you can inspect these TypeTag objects and
+generate the most suitable code for each occasion. Unfortunately, using the low
+level compiler's FastTrack mechanism doesn't permit using this facility.
+Instead, we are forced to work directly with the compiler's internal type
+representations.
+
+FastTrack's special handler for the macroMap/macroForeach methods, after
+doing some preprocessing on the pattern matched ASTs, will call the function
+that does the actual transformation we saw in the previous subsection. Firstly,
+let's see what's the arguments it obtains from the handler.

@@ -137,7 +137,7 @@ Our project falls in the third category where we use the macros to optimize the
 Scala collections.
 
 
-Subsection: Scala Macros Example
+Subsection: Example
 
 Here is a prototypical macro definition:
 
@@ -203,7 +203,7 @@ Context that wraps an abstract syntax tree of type T. The result type of the
 assertImpl macro implementation is again a wrapped tree, of type c.Expr[Unit].
 
 
-Subsection: Scala Macros Hygiene
+Subsection: Hygiene
 
 Obviously the abstract syntax tree construction in the last example of the
 previous section is cumbersome and error-prone. But it is also wrong. The tree
@@ -218,7 +218,7 @@ problems. A corner-stone of the technique is a macro called reify that produces
 its tree one stage later.
 
 
-Subsection: Scala Macros Reification and Splicing
+Subsection: Reification and Splicing
 
 The reify macro plays a crucial role in the proposed macro system. Its de
 nition as a member of Context is:
