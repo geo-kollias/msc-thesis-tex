@@ -199,19 +199,70 @@ representations lowering the level of abstraction we can work with.
 
 FastTrack's special handler for the macroMap/macroForeach methods, after
 doing some preprocessing on the pattern matched ASTs, will call the metod
-that does the actual transformation we saw in the previous subsection. Firstly,
-let's see this method's signature and what arguments it obtains
-from the handler.
+that does the actual transformation we saw in the previous subsection. 
 
-This method is defined in scala.tools.reflect.declosurify.Declosurify
-object ``def mapInfix[A, B](c0: Ctx)(f0: c0.Expr[A => B], inElemTpe: c0.Type,
-outElemTpe: c0.Type, inCollTpe: c0.Type, outCollTpe: c0.Type, bfTree: c0.Tree):
-c0.Tree''. Despite its name, mapInfix can generate code for both macroMap and
-macroForeach. It's a curried method parameterized on the received function's
-input and return types (A, B). In the first parameter list, c0 is a context
-object as we described it above, giving us access to macro application's
-call-site information. In the second parameter list, f0 represents a typed 
 
-c0.Expr realizes the notion of Scala's path-depedent types. Here we  choose the
-Expr that it's defined inside the c0 object. The same holds for the c0.Type
-that follow.
+Subsection: Transformation Method Interface
+
+Firstly, let's see the transformation method's signature and what arguments it
+obtains from the handler. This method is defined in
+scala.tools.reflect.declosurify.Declosurify object ``def mapInfix[A, B](c0:
+Ctx)(f0: c0.Expr[A => B], inElemTpe: c0.Type, outElemTpe: c0.Type, inCollTpe:
+c0.Type, outCollTpe: c0.Type, bfTree: c0.Tree): c0.Tree''. Despite its name,
+mapInfix can generate ASTs for both macroMap and macroForeach. It's a curried
+method parameterized on the received function's input and return types (A, B).
+In the first parameter list, c0 is a context object as we described it above,
+giving us access to macro application's call-site information. Probably the most
+important c0's field is the ``prefix'' which represents the collection object in
+our case. We will call it simply ``prefix'' from now on. In the second parameter
+list, f0 represents the function's AST which is going to be applied to the
+prefix along. Its type ``Expr'' wraps an AST and an internal type tag
+(``TypeTag'') to provide access to the type of the tree. As we mentioned before,
+working at that level of the compiler using ``Expr'' doesn't really help us. The
+next four arguments are:
+ - inElemTpe: the internal type of the prefix's elements
+ - outElemTpe: the internal type of the elements of the collection our macroMap
+is going to create
+- inCollTpe: the internal type of the receiver
+- outCollTpe: the internal type of the collection our macroMap is going to
+create
+
+The last elemnt is the AST of a scala.collection.generic.CanBuildFrom [cite phd]
+object that makes easier and more maintable the creation of new collection out
+of existing ones. It's used thoroughly through out the standard library and,
+right now, it's not really used in the declosurify so we are not going to
+elaborate more on that argument.
+
+It's easy to observe that all of second parameter list types are prepended
+with the context object c0. That qualified notation realizes the notion of
+Scala's path-depedent types. For example, here we choose the ``Expr'' that it's
+defined inside the c0 object. Generally, if we have two different objects c0 and
+c1 of the same type which somehow define an inner type MyType, e.g., with type
+member or inner class,  then c0.MyType is a different type from c1.MyType in
+Scala. The same holds for the ``c0.Type''s that follow.
+
+
+Subsection: Transformation Method Implementation
+
+Knowing what our transformation method can operate upon we can examine the
+main points of the actual transformation. One of the first things declosurify
+checks is if the ``outCollTpe'' is Unit or not. If it's Unit then it means it's
+executed only for its side-effects so it's a foreach call. Instead of leaning on
+this heuristic, newer version of the Scala macros provide us with the exact name
+of the calling method.
+
+After that, we check three conditions to ensure that a typical transformation
+can take place:
+- the f0 AST is not null
+- the f0 AST is actually a function AST. In Scala, the value of a block
+of code is the value of its last expression, so here we examine two cases.
+Either f0 is a function AST or f0's last expression is a function AST.
+- macro application is enclosed in a method. Currently, that limitation makes
+the transformation easier.
+
+If any of the above points is not satisfied, then the mapInfix falls back to the
+default map/foreach implementation by generating an AST which
+calls the map/foreach method on the same prefix object.
+
+The next important step is the transformation of the function AST into a local
+free method. [Example]
