@@ -155,32 +155,33 @@ Section: How declosurify works
 Subsection: Putting declosurify functionality in the Scala standard library
 
 Initially declosurify could be used as a library adding the methods macroMap
-and macroForeach on all Scala collections that implemented the TraversableOnce
-interface and Arrays, through Scala's implicit conversions. Since, ultimately,
-we would like to substitute default map and foreach methods with macroMap and
-macroForeach respectively, we had to move them inside the Scala standard
-library. Scala standard library doesn't have access to the new compile-time
-reflection capabilities since it doesn't depend on the scala-reflect and
-scala-compiler packages. As a solution, we used the scala compiler's FastTrack
-mechanism. Scala compiler has a low level mechanism to invoke macro expansions
-for builtin macros. One such builtin macro is the reify function itself  we saw
-in the previous chapter. FastTrack module is basically a registry where you
-link method's compiler Symbols with special handler methods. For example,
-whenever the compiler sees a Symbol representing a reify's application, it calls
-its respective FastTrack special handler which has access to reify appication's
+and macroForeach on all Scala collections that implemented the
+scala.collection.TraversableOnce trait and Arrays, through Scala's implicit
+conversions. Since, ultimately, we would like to substitute default map and
+foreach methods with macroMap and macroForeach respectively, we had to move them
+inside the Scala standard library. Scala standard library doesn't have access to
+the new compile-time reflection capabilities since it doesn't depend on the
+scala-reflect and scala-compiler packages. As a solution, we used the scala
+compiler's FastTrack mechanism defined in scala.tools.reflect.FastTrack
+trait. Basically, it's a low level mechanism to invoke macro expansions for
+builtin macros. One such builtin macro is the reify function itself  we saw in
+the previous chapter. FastTrack module uses a registry where you link
+method's compiler Symbols with special handler methods. For example, whenever
+the compiler sees a Symbol representing a reify's application, it calls its
+respective FastTrack special handler which has access to reify appication's
 call-site context and all of  its arguments' Abstract Syntax Trees (ASTs),
 through pattern matching. Call-site context object, generally, holds call-site
 information like the macro application's enclosing method, its enclosing class,
-its line in the file. The ASTs contain the internal representation of
-the macro application like ``List(1, 2, 3).macroMap(_ + 1)'' i.e., the receiver
-object, the macroMap or macroForeach method call and its function argument. The
-pattern matching happens upon the ASTs so, theoritically, we can choose to
-match successfully against ``List(1,2,3).macroMap(_ + 1)'' but not against ``val
-r = List(1,2,3); r.macroMap(_ + 1)'' depending on our needs. If the pattern
-matching is successful, its respective compiler handler will eventually
-generate the AST which replaces the macro application's AST at the call-site,
-completing that way that macro's expansion. In our case, whenever scalac
-finds a Symbol of an application of the TraversableLike trait's macroMap or
+its line in the file. The ASTs contain the internal representation of the macro
+application like ``List(1, 2, 3).macroMap(_ + 1)'' i.e., the receiver object,
+the macroMap or macroForeach method call and its function argument. The pattern
+matching happens upon these ASTs so, theoritically, we can choose to match
+successfully against ``List(1,2,3).macroMap(_ + 1)'' but not against ``val r =
+List(1,2,3); r.macroMap(_ + 1)'' depending on our needs. If the pattern matching
+is successful, its respective compiler handler will eventually generate the AST
+which replaces the macro application's AST at the call-site, completing that way
+that low-level macro expansion. In our case, whenever scalac finds a Symbol of
+an application of the scala.collection.TraversableLike trait's macroMap or
 macroForeach method, it triggers the expansion we will describe in the next
 subsection.
 
@@ -194,9 +195,23 @@ especially useful for macros, since you can inspect these TypeTag objects and
 generate the most suitable code for each occasion. Unfortunately, using the low
 level compiler's FastTrack mechanism doesn't permit using this facility.
 Instead, we are forced to work directly with the compiler's internal type
-representations.
+representations lowering the level of abstraction we can work with.
 
 FastTrack's special handler for the macroMap/macroForeach methods, after
-doing some preprocessing on the pattern matched ASTs, will call the function
+doing some preprocessing on the pattern matched ASTs, will call the metod
 that does the actual transformation we saw in the previous subsection. Firstly,
-let's see what's the arguments it obtains from the handler.
+let's see this method's signature and what arguments it obtains
+from the handler.
+
+This method is defined in scala.tools.reflect.declosurify.Declosurify
+object ``def mapInfix[A, B](c0: Ctx)(f0: c0.Expr[A => B], inElemTpe: c0.Type,
+outElemTpe: c0.Type, inCollTpe: c0.Type, outCollTpe: c0.Type, bfTree: c0.Tree):
+c0.Tree''. Despite its name, mapInfix can generate code for both macroMap and
+macroForeach. It's a curried method parameterized on the received function's
+input and return types (A, B). In the first parameter list, c0 is a context
+object as we described it above, giving us access to macro application's
+call-site information. In the second parameter list, f0 represents a typed 
+
+c0.Expr realizes the notion of Scala's path-depedent types. Here we  choose the
+Expr that it's defined inside the c0 object. The same holds for the c0.Type
+that follow.
