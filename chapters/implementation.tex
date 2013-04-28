@@ -159,7 +159,10 @@ and macroForeach on all Scala collections that implemented the
 scala.collection.TraversableOnce trait and Arrays, through Scala's implicit
 conversions. Since, ultimately, we would like to substitute default map and
 foreach methods with macroMap and macroForeach respectively, we had to move them
-inside the Scala standard library. Scala standard library doesn't have access to
+inside the Scala standard library. Because the implementation for macroMap and
+macroForeach is mostly the same, from now on we will be referring mainly to the
+macroMap implementation without loss of generality. Scala
+standard library doesn't have access to
 the new compile-time reflection capabilities since it doesn't depend on the
 scala-reflect and scala-compiler packages. As a solution, we used the scala
 compiler's FastTrack mechanism defined in scala.tools.reflect.FastTrack
@@ -174,15 +177,15 @@ through pattern matching. Call-site context object, generally, holds call-site
 information like the macro application's enclosing method, its enclosing class,
 its line in the file. The ASTs contain the internal representation of the macro
 application like ``List(1, 2, 3).macroMap(_ + 1)'' i.e., the receiver object,
-the macroMap or macroForeach method call and its function argument. The pattern
+the macroMap method call and its function argument. The pattern
 matching happens upon these ASTs so, theoritically, we can choose to match
 successfully against ``List(1,2,3).macroMap(_ + 1)'' but not against ``val r =
 List(1,2,3); r.macroMap(_ + 1)'' depending on our needs. If the pattern matching
 is successful, its respective compiler handler will eventually generate the AST
 which replaces the macro application's AST at the call-site, completing that way
 that low-level macro expansion. In our case, whenever scalac finds a Symbol of
-an application of the scala.collection.TraversableLike trait's macroMap or
-macroForeach method, it triggers the expansion we will describe in the next
+an application of the scala.collection.TraversableLike trait's macroMap
+method, it triggers the expansion we will describe in the next
 subsection.
 
 Regular Scala macros implementations can be generic in the sense that they can
@@ -197,7 +200,7 @@ level compiler's FastTrack mechanism doesn't permit using this facility.
 Instead, we are forced to work directly with the compiler's internal type
 representations lowering the level of abstraction we can work with.
 
-FastTrack's special handler for the macroMap/macroForeach methods, after
+FastTrack's special handler for the macroMap method, after
 doing some preprocessing on the pattern matched ASTs, will call the metod
 that does the actual transformation we saw in the previous subsection. 
 
@@ -242,19 +245,19 @@ member or inner class,  then c0.MyType is a different type from c1.MyType in
 Scala. The same holds for the ``c0.Type''s that follow.
 
 
-Subsection: Transformation Method Implementation
+Subsection: Transformation Requirements
 
 Knowing what our transformation method can operate upon we can examine the
 main points of the actual transformation. One of the first things declosurify
-checks is if the ``outCollTpe'' is Unit or not. If it's Unit then it means it's
-executed only for its side-effects so it's a foreach call. Instead of leaning on
-this heuristic, newer version of the Scala macros provide us with the exact name
-of the calling method.
+checks is if the ``outCollTpe'' is Unit or not. If it's Unit then it means
+macro is applied only for its side-effects so it's a foreach call. Instead of
+leaning on this heuristic, newer version of the Scala macros provide us with the
+exact name of the calling method.
 
-After that, we check three conditions to ensure that a typical transformation
-can take place:
-- the f0 AST is not null
-- the f0 AST is actually a function AST. In Scala, the value of a block
+After that, we check three conditions to ensure that a typical
+transformation can take place (lines XX-ΥΥ):
+- the f0 AST is actually a function AST. In Scala, the value of a block.
+- the f0 AST doesn't contain any return expressions.
 of code is the value of its last expression, so here we examine two cases.
 Either f0 is a function AST or f0's last expression is a function AST.
 - macro application is enclosed in a method. Currently, that limitation makes
@@ -262,7 +265,54 @@ the transformation easier.
 
 If any of the above points is not satisfied, then the mapInfix falls back to the
 default map/foreach implementation by generating an AST which
-calls the map/foreach method on the same prefix object.
+calls the map/foreach method on the same prefix object (lines XX-ΥΥ).
 
-The next important step is the transformation of the function AST into a local
-free method. [Example]
+The next important step is the transformation of the passed closure AST
+into a local free method AST (lines XX-YY). For example, the passed closure ``x
+=> x + 1'' would be transformed to ``def local1(x$1: Int): Int = x$1.+(1);''. A
+closure like ``x => x + y'' where y is defined in the local scope would be
+transofrmed to something like ``def local1(x: Int): Int =
+x.+(TestMacroMapObject.this.y)''.
+
+
+Subsection: Transformations Pattern
+
+Different transformations are applied on different prefixes but all of them
+share the same basic structure. In pseudocode that structure could be described
+as:
+
+reify {
+  val local_method = local_method_AST.splice // we saw it in the previous
+subsection
+  val inputCollection = prefix_AST.splice
+  var outputCollectionBuf = output_collection_buffer_AST.splice // that will
+hold or generate the new collection
+  while (prefix.has_more_elements()) {
+    val elem = prefix.get_next_element()
+    val result = local_method(elem)
+    outputCollectionBuf.add(result)
+  }
+  outputCollectionBuf.generate()
+}
+
+The reasons we need differrent implementations for different kinds of
+prefixes are:
+- Each kind has different interface, e.g., different supported methods
+- Different implementation logic is needed in order to produce faster code, by
+exploiting specific collections' characteristics.
+
+The mentioned ASTs in the reify are constructed with one of these three ways
+depending on the occasion:
+- we get them directly from the FastTrack's pattern matching
+- we get them by using the ``Symbol''s and ``Type'''s APIs
+- we construct them manually.
+
+
+Subsection: Arrays, ArraysOps and IndexedSeq Transformation
+
+scala.Array and all collections that implement the 
+scala.collection.mutable.ArrayOps and scala.colletion.IndexedSeq traits share
+the same transformation, since all of them are indexed sequences. The
+transformation is defined on lines XX-YY. Below we will see an example of this
+transformation...
+
