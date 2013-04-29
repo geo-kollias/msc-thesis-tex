@@ -1,9 +1,9 @@
-section: The Problem
+Section: The Problem
 
 In 'Fixing The Inlining ``Problem''' [cite], Cliff Click describes an issue
-that has emerged the last years in the JVM ecosystem:
+that has emerged the last few years in the JVM ecosystem:
 
-“The Problem” is simply this: new languages on the JVM (e.g. JRuby) and new
+``“The Problem” is simply this: new languages on the JVM (e.g. JRuby) and new
 programming paradigms (e.g. Fork Join) have exposed a weakness in the current
 crop of inlining heuristics.  Inlining is not happening in a crucial point in
 hot code exposed by these languages, and the lack of inlining is hurting
@@ -11,7 +11,7 @@ performance in a major way.  AND the inlining isn’t happening because The
 Problem is a hard one to solve; (i.e. it’s not the case that we’ll wave our
 wands and do a quick fix & rebuild HotSpot and the problem will go away).   John
 Rose, Doug Lea and I all agree that it’s a Major Problem facing JVMs with long
-and far reaching implications.
+and far reaching implications.``
 
 Let's see what The Problem is with a small example in a Java-like language. The
 Problem is getting the right amount of context in hot inner loops – which also
@@ -33,10 +33,9 @@ inlining the compiler doesn’t know what the loop body does (because function
 calls can in general do anything), and with inlining it can understand the
 entire function completely – and then see it’s a simple loop around a stream of
 array references.  At this point the JIT can do range-check elimination, loop
-unrolling, and prefetching – leading to an easy 10x speedup over the not-inlined
-loop.
+unrolling, and prefetching among other optimizations.
 
-The Problem is, is that there are multiple variations on “or_word” \emph{and}
+The Problem is that there are multiple variations on “or_word” \emph{and}
 the wrapping iterator gets complex.  It’s the product of these two parts getting
 complicated that makes The Problem.
 
@@ -111,9 +110,9 @@ the problem lies and how the Scala macros can help us alleviate it.
 
 Section: Scala Def Macros
 
-Since the implementation uses the Scala macros {cite Scala Macros, a Technical
-Report} let's firstly see the motivation for adding them in a programming
-language and then a simple real example.
+Since our implementation uses functionality from the newly introduced Scala
+macros {cite Scala Macros, a Technical Report} let's firstly see the motivation
+for adding them in a programming language and then a simple real example.
 
 
 Subsection: Motivation
@@ -150,10 +149,9 @@ implementation method.
 
 If, during type-checking, the compiler encounters an application of the macro
 m(args), it will expand that application by invoking the corresponding macro
-implementation method, with the abstract-syntax trees of the argument
+implementation method, with the abstract-syntax trees (ASTs) of the argument
 expressions args as arguments. The result of the macro implementation is another
-abstract syntax tree, which will be inlined at the call site and will be
-type-checked in turn.
+AST, which will be inlined at the call site and will be type-checked in turn.
 
 The following code snippet declares a macro definition assert that references a
 macro implementation Asserts.assertImpl (definition of assertImpl is provided
@@ -167,14 +165,12 @@ invocation
 assertImpl(c)(<[ x < 10 ]>, <[ “limit exceeded” ]>)
 
 where c is a context argument that contains information collected by the
-compiler at the call site, and the other two arguments are abstract syntax trees
-representing the two expressions x < 10 and limit exceeded.
+compiler at the call site, and the other two arguments are ASTs representing the
+two expressions x < 10 and limit exceeded.
 
-In this document, <[ expr ]> denotes the abstract syntax tree that represents
-the expression expr. This notation has no counterpart in our proposed extension
-of the Scala language. In reality, the syntax trees would be constructed from
-the types in trait scala.reflect.api.Trees and the two expressions above would
-look like this:
+<[ expr ]> denotes the AST that represents the expression expr. In reality, the
+syntax trees would be constructed from the types in trait
+scala.reflect.api.Trees and the two expressions above would look like this:
 
 Literal(Constant("limit exceeded"))
 Apply(
@@ -199,19 +195,19 @@ First comes a single parameter, of type scala.reflect.macros.Context. This is
 followed by a list of parameters that have the same names as the macro
 definition parameters. But where the original macro parameter has type T, a
 macro implementation parameter has type c.Expr[T]. Expr[T] is a type defined in
-Context that wraps an abstract syntax tree of type T. The result type of the
+Context that wraps an AST of type T. The result type of the
 assertImpl macro implementation is again a wrapped tree, of type c.Expr[Unit].
 
 
 Subsection: Hygiene
 
-Obviously the abstract syntax tree construction in the last example of the
+Obviously the AST construction in the last example of the
 previous section is cumbersome and error-prone. But it is also wrong. The tree
 produced from a macro will be inlined and type-checked at the macro call site.
-But that means that the identier raise will be type-checked at a point where it
-is most likely not visible, or in the worst case they might refer to something
-else. In the macro literature, this insensitivity to bindings is called
-non-hygienic {cite [19, 8]}.
+But that means that the identifier raise will be type-checked at a point where
+it is most likely not visible, or in the worst case they might refer to
+something else. In the macro literature, this insensitivity to bindings is
+called non-hygienic {cite [19, 8]}.
 
 However, it turns out that macros themselves can be used to solve both these
 problems. A corner-stone of the technique is a macro called reify that produces
@@ -220,18 +216,18 @@ its tree one stage later.
 
 Subsection: Reification and Splicing
 
-The reify macro plays a crucial role in the proposed macro system. Its de
-nition as a member of Context is:
+The reify macro plays a crucial role in the proposed macro system. Its
+definition as a member of Context is:
 
 def reify [ T ] ( expr : T) : Expr [ T ] = macro . . .
 
 Reify accepts a single parameter expr, which can be any well-typed Scala
 expression, and creates a tree that, when compiled and evaluated, will recreate
 the original tree expr. So reify is like time-travel: trees get re-constituted
-at a later stage. If reify is called from normal compiled code, its eect is
-that the abstract syntax tree passed to it will be recreated at run time.
-Consequently, if reify is called from a macro implementation, its eect is that
-the abstract syntax tree passed to it will be recreated at macro-expansion time
+at a later stage. If reify is called from normal compiled code, its effect is
+that the AST passed to it will be recreated at run time.
+Consequently, if reify is called from a macro implementation, its effect is that
+the AST passed to it will be recreated at macro-expansion time
 (which corresponds to run time for macros). This gives a convenient way to
 create syntax trees from Scala code: pass the Scala code to reify, and the
 result will be a syntax tree that represents that very same code.
@@ -264,3 +260,6 @@ object Asserts {
 
 Here, we see that we can use the Expr's splice method inside the reify in order
 to inject other trees (Expr).
+
+Reification and splicing are crucial to our implementation which will see in
+the next chapter.
