@@ -89,9 +89,8 @@ then the JIT can inline. Of course, if we do that we need an iterator for the
 version and so we need a lot of them. Also, we will need a new one for each
 new function we can think of; we can't just name them all up front.  So we’ll
 end up with a ton of these iterators each with a custom call in the inner loop.
-All these iterators will start blowing out the instruction cache on our CPU,
-costing us ~10x by itself, and besides it'a pain to maintain dozens of cloned
-complex iterators.
+All these iterators will start blowing out the instruction cache on our CPU, and
+besides it'a pain to maintain dozens of cloned complex iterators.
 
 Several Java ecosystem's prominent figures, like Cliff Click, John Rose, Doug
 Lea, have proposed several solution that range from pure obscure technical
@@ -104,8 +103,83 @@ The Problem too and, actually, it affects its adoption negatively. At the end of
 shortcomings, leaked to the public {cite
 http://www.infoq.com/news/2011/11/yammer-scala}. Most complaints were related
 with The Problem and, more specifically, with the Scala standard
-library collections' performance. We will see in the next chapter where exactly
-the problem lies and how the Scala macros can help us alleviate it.
+library collections' performance. In the next chapter we will see where exactly
+the problem lies and how the Scala macros can help us alleviate it. Before
+that, it would be helpful to overview the Scala collections hierrarchy and the
+Scala macros.
+
+
+Section: Scala Collections Overview
+
+Scala collections systematically distinguish between mutable and immutable
+collections. A mutable collection can be updated or extended in place. This
+means you can change, add, or remove elements of a collection as a side effect.
+Immutable collections, by contrast, never change. You have still operations that
+simulate additions, removals, or updates, but those operations will in each case
+return a new collection and leave the old collection unchanged. We will see in
+the next chapter how this mutable-immutable separation affects our macro
+transformation plan.
+
+All collection classes are found in the package scala.collection or one of its
+sub-packages mutable, immutable, and generic. Most collection classes needed by
+client code exist in three variants, which are located in packages
+scala.collection, scala.collection.immutable, and scala.collection.mutable,
+respectively. Each variant has different characteristics with respect to
+mutability.
+
+A collection in package scala.collection.immutable is guaranteed to be immutable
+for everyone. Such a collection will never change after it is created.
+Therefore, you can rely on the fact that accessing the same collection value
+repeatedly at different points in time will always yield a collection with the
+same elements.
+
+A collection in package scala.collection.mutable is known to have some
+operations that change the collection in place. So dealing with mutable
+collection means you need to understand which code changes which collection
+when.
+
+A collection in package scala.collection can be either mutable or immutable. For
+instance, collection.IndexedSeq[T] is a superclass of both
+collection.immutable.IndexedSeq[T] and collection.mutable.IndexedSeq[T]
+Generally, the root collections in package scala.collection define the same
+interface as the immutable collections, and the mutable collections in package
+scala.collection.mutable typically add some side-effecting modification
+operations to this immutable interface.
+
+The difference between root collections and immutable collections is that
+clients of an immutable collection have a guarantee that nobody can mutate the
+collection, whereas clients of a root collection only promise not to change the
+collection themselves. Even though the static type of such a collection provides
+no operations for modifying the collection, it might still be possible that the
+run-time type is a mutable collection which can be changed by other clients.
+
+By default, Scala always picks immutable collections. For instance, if you just
+write Set without any prefix or without having imported Set from somewhere, you
+get an immutable set, and if you write Iterable you get an immutable iterable
+collection, because these are the default bindings imported from the scala
+package. To get the mutable default versions, you need to write explicitly
+collection.mutable.Set, or collection.mutable.Iterable.
+
+The following figure shows all collections in package scala.collection. These
+are all high-level abstract classes or traits, which generally have mutable as
+well as immutable implementations.
+
+[figure]
+
+The following figure shows all collections in package
+scala.collection.immutable.
+
+[figure]
+
+And the following figure shows all collections in package
+scala.collection.mutable.
+
+[figure]
+
+This work focus mainly on the Seq's subtree, since it's where we can get the
+most prominent speedups by exploiting the sequences' properties. A sequence is a
+kind of iterable that has a length method and whose elements have fixed index
+positions, starting from 0.
 
 
 Section: Scala Def Macros

@@ -149,6 +149,29 @@ reason about further optimizations.
 
 Section: How ft-declosurify works
 
+Subsection: macroMap/macroForeach definition
+
+macroForeach method, as the standard foreach, is meant to traverse all elements
+of the collection, and apply the given operation, f, to each element. The
+invocation of f is done for its side effect only; in fact any function result of
+f is discarded. Similarly, macroMap, as the standard map, traverses all elements
+of the collection, and apply the given operation, f, to each element but, also,
+it always returns a collection whose type depends on the f. We could see
+macroMap's functionality as a superset of the macroForeach's functionality and
+that's true in the implementation side too. The same code handles both
+cases but, in the case of macroForeach, we ignore the result. For that reason
+and without any loss of generality we will be referring only to the macroMap in
+the rest of the text.
+
+macroMap is defined in scala.collection.TraversableLike trait, where the
+standard library's map method is defined too. It's definition is:
+
+``def macroMap[B, That](f0: A => B)(implicit bf: CanBuildFrom[Repr, B, That]):
+That = ???''
+
+
+
+
 
 Subsection: Putting ft-declosurify functionality in the Scala standard library
 
@@ -160,9 +183,7 @@ collections that implemented the scala.collection.TraversableOnce trait and
 Arrays, through Scala's implicit conversions {cite implicit conversions}. Since,
 ultimately, we would like to substitute the default map and foreach methods
 with the macroMap and macroForeach implementations respectively, we had to move
-them inside the Scala standard library. Because the implementation for macroMap
-and macroForeach is mostly the same, from now on we will be referring mainly to
-the macroMap implementation without loss of generality. Scala standard library
+them inside the Scala standard library. Scala standard library
 doesn't have access to the new compile-time reflection capabilities since it
 doesn't depend on the
 scala-reflect and scala-compiler packages, so we can't have definition like
@@ -239,9 +260,7 @@ to return
 The last element is the AST of a scala.collection.generic.CanBuildFrom [cite
 adrian moors phd] object that makes easier and more maintable the creation of
 new collection out of existing ones. It's used thoroughly through out the
-standard library and,
-right now, it's not really used in the ft-declosurify so we are not going to
-elaborate more on that argument.
+standard library and we make use of it   
 
 It's easy to observe that all of second parameter list types are prepended
 with the context object c0. That qualified notation realizes the notion of
@@ -295,10 +314,10 @@ reify {
   val local_method = local_method_AST.splice // we saw it in the previous
 subsection
   val inputCollection = prefix_AST.splice
-  var outputCollectionBuf = output_collection_buffer_AST.splice // that will
+  var outputCollectionBuf = output_collection_buffer_AST.splice // will
 hold or generate the new collection
-  while (prefix.has_more_elements()) {
-    val elem = prefix.get_next_element()
+  while (prefix.hasNext()) {
+    val elem = prefix.getNext()
     val result = local_method(elem)
     outputCollectionBuf.add(result)
   }
@@ -322,13 +341,32 @@ Whatever AST is returned from the reify will eventually replace the macro
 application's AST in the first place.
 
 
-Subsection: Arrays, ArraysOps and IndexedSeq Transformation
+Subsection: Map implementation idiosyncrasy
+
+In contrast to most of the other collections operations, a map operation can
+generate a collection that has the same type constructor as the prefix
+collection but possibly with a different element type, or even a entirely
+different collection type. As an example of the former case, if f is a function
+from String to Int, and xs is a List[String], then xs map f should give a
+List[Int]. Likewise, if ys is an Array[String], then ys map f should give a
+Array[Int]. This case is handled by our implementation, by generating the
+proper builder for the generated collection (line XX-YY) since its element
+type is the  
+ 
+
+One subtle implementation point is that, after the map/macroMap application, the
+generated collection can have a different 
+
+
+
+Subsection: Arrays, scala.collection.mutable.ArraysOps and
+scala.collection.mutable.IndexedSeq Transformation
 
 scala.Array and all collections that implement the 
-scala.collection.mutable.ArrayOps and scala.colletion.IndexedSeq traits share
-the same transformation, since all of them are indexed sequences. The exact
-transformation is defined on lines XX-YY. As an example, any macroMap
-applications on Arrays like:
+scala.collection.mutable.ArrayOps and scala.collection.mutable.IndexedSeq traits
+share the same transformation, since all of them are indexed *mutable*
+sequences. The exact transformation is defined on lines XX-YY. As an example,
+any macroMap applications on Arrays like:
 
 Array(1, 2, 3).macroMap(_ + 1)
 
@@ -346,6 +384,10 @@ scala.this.Predef.wrapIntArray(Array[Int]{2, 3}))).repr();
   };
   buf
 }
+
+The transformation creates a new array with the same type parameter traverses
+over the prefix using a simple while and indexes, applying the map's function on
+each element and the results are 
 
 In the next chapter will see how much faster this version is compared to
 Array(1, 2, 3).map(_ + 1).
