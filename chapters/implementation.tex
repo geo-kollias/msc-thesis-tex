@@ -1,7 +1,7 @@
 Section: ft-declosurify big picture
 
-For understanding on a high-level what ft-declosurify does let's see how List(1,
-2, 3).map(_ + 1) is translated from both scalac and ft-declosurify point
+For understanding, on a high-level what ft-declosurify does let's see how
+List(1, 2, 3).map(_ + 1) is translated from both scalac and ft-declosurify point
 of views. List(1, 2, 3).map(_ + 1) is a shortcut for List(1, 2, 3).map(x => x +
 1), where x => x + 1 is an anonymous function -closure- that returns its
 argument incremented by one.
@@ -88,6 +88,7 @@ object ListMapCompilation extends App {
 The only difference here is the use of macroMap instead of the plain map. It's
 translated into:
 
+[obsolete example, cbf & builder free method are added]
 package src.main.scala {
   object ListMapCompilation extends Object with App {
     def <init>(): src.main.scala.ListMapCompilation.type = {
@@ -127,7 +128,7 @@ immutable.this.List.apply(scala.this.Predef.wrapIntArray(Array[Int]{1, 2, 3}));
      
       while(these.isEmpty().unary_!()){
         buf.+=(scala.Int.box(ListMapCompilation.this.local1\$1(
-scala.Int.unbox(these.hea d % ()))));
+scala.Int.unbox(these.head()))));
         these = these.tail().$asInstanceOf[List]()
       };
       buf.result().$asInstanceOf[List]()
@@ -321,12 +322,17 @@ x.+(TestMacroMapObject.this.y)''. Also, a closure like ``{println(''hi``); x =>
 x + 1}'' would be transformed to ``def local1(x: Int): Int = {println(''hi``);
 x.+(1)}'
 
+Subsection: Transformation Choice and Pattern
 
-Subsection: Transformations Pattern
+The transformation choice depends upon both the prefix's type and  the
+target collection the CanBuildFrom object has decided to create, which depends
+itself on which implicit collections' CanBuildFrom object has been passed to
+macroMap from the Scala compiler in an earlier phase.
 
-Different transformations are applied on different kind of prefixes but all of
-them share the same basic structure. In pseudocode that structure could be
-described as:
+Right now, there are four different transformation paths for different kinds of
+prefixes. We will check them in the following subsections but all of them are
+based on the same core transformation pattern. In pseudocode that structure
+could be described as:
 
 reify {
   val local_method = local_method_AST.splice // we saw it in the previous
@@ -343,15 +349,21 @@ hold or generate the new collection
 }
 
 The reasons we need differrent implementations for different kinds of
-prefixes are:
+prefixes and target collections are:
 - Each kind has different API, e.g., different supported methods
 - Different implementation logic is needed for each kind in order to produce
 faster code, by exploiting each kinds' specific characteristics since the same
 methods might take different time on different collections.
 
-Here we see how important reifying and splicing operations are. The mentioned
-ASTs that we splice inside the reify above are constructed with one of these
-three ways depending on the occasion:
+Since we are more interested in the sequences collections, as they are more
+common, trait Seq has two subtraits LinearSeq, and IndexedSeq. These do not add
+any new operations, but each offers different performance characteristics: A
+linear sequence has efficient head and tail operations, whereas an indexed
+sequence has efficient apply, length, and (if mutable) update operations. 
+
+Here, also, we see how important reifying and splicing operations are. The
+mentioned ASTs that we splice inside the reify above are constructed with one of
+these three ways depending on the occasion:
 - we get them directly from the FastTrack's pattern matching
 - we get them by using the ``Symbol''s and ``Type'''s APIs
 - we construct them manually.
@@ -380,7 +392,9 @@ Subsection: Arrays, scala.collection.mutable.ArraysOps and
 scala.collection.mutable.IndexedSeq Transformation
 
 scala.Array and all collections that implement the 
-scala.collection.mutable.ArrayOps and scala.collection.mutable.IndexedSeq traits
+scala.collection.mutable.ArrayOps and scala.collection.mutable.IndexedSeq
+traits, like scala.collection.mutable.ArraySeq,
+scala.collection.mutable.StringBuilder, scala.collection.mutable.ArrayBuffer,
 share the same transformation, since all of them are indexed *mutable*
 sequences. The exact transformation is defined on lines XX-YY. As an example,
 any macroMap applications on Arrays like:
@@ -402,17 +416,73 @@ scala.this.Predef.wrapIntArray(Array[Int]{2, 3}))).repr();
   buf
 }
 
-The transformation creates a new array with the same type parameter traverses
-over the prefix using a simple while and indexes, applying the map's function on
-each element and the results are 
+Exactly the same transformation applies for all the other collections that fall
+into this category. The reasons we chose this transformation path for this
+category are:
+- only this category's collections accept a length in the constructor
+- the length method here takes constant time
+- the element selection through xs.apply(i) takes constant time
+- the update method is supported, since all collections of this category are
+mutable
 
 In the next chapter will see how much faster this version is compared to
 Array(1, 2, 3).map(_ + 1).
 
+Subsection: scala.collection.IndexedSeq Transformation
 
-Subsection: LinearSeq Transformation
+All classes that implement the scala.collection.IndexedSeq trait share this
+transformation. Examples of such classes in the standard library are
+scala.collection.immutable.Vector, scala.collection.immutable.NumericRange and
+scala.collection.immutable.Range. All of them are share the same transformation,
+since all of them are indexed *immutable* sequences, so for example they don't
+support the update method we saw in the previous category. The transformation
+is defined on lines XX-YY. As an example, any macroMap applications on
+scala.collection.immutable.Vector like:
+
+scala.collection.immutable.Vector(1, 2, 3).macroMap(_ + 1)
+
+will be replaced from:
+
+{
+  private def local1(x$1: Int): Int = x$1.+(1);
+  private def builder1:
+scala.collection.mutable.Builder[Int,scala.collection.immutable.Vector[Int]] = {
+    val b:
+scala.collection.mutable.Builder[Int,scala.collection.immutable.Vector[Int]] =
+immutable.this.Vector.canBuildFrom[Int].apply();
+    b.sizeHint(scala.collection.immutable.Vector.apply[Int](1, 2, 3));
+    b
+  };
+  val buf = builder1();
+  val xs = scala.collection.immutable.Vector.apply[Int](1, 2, 3);
+  var i = 0;
+  while(i.<(xs.length)){
+    buf.+=(local1(xs(i)));
+    i = i.+(1)
+  };
+  buf.result
+}
+
+Here we use a scala.collection.mutable.Builder object to construct the target
+collection, which is a Vector too. The builder itself is created from the
+canBuildFrom object the compiler passed in implicitly as we explained
+previously. The builder creation and initialization takes place in the
+builder1 method. While we traverse the prefix, we apply the local function to
+all elements and we append (through method +=) them to the builder. When the
+traversal is over, we call the builder's result method which returns the full
+target collection we want (a Vector in this example).
+
+The reasons we chose this transformation path for this category are:
+- the length method here takes constant time
+- the element selection through xs.apply(i) takes constant time
+
+In the next chapter will see how much faster this version is compared to
+scala.collection.immutable.Vector(1, 2, 3).map(_ + 1).
+
+
+Subsection: scala.collection.LinearSeq Transformation
 [Add example with List]
 
 
-Subsection: Traversable Transformation
+Subsection: scala.collection.Traversable Transformation
 [Regards the rest of the Scala collections. Add example with e.g. Vector]
