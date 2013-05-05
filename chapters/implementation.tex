@@ -1,7 +1,7 @@
-Section: What ft-declosurify does
+Section: ft-declosurify big picture
 
-For understanding better what ft-declosurify does let's see how List(1, 2,
-3).map(_ + 1) is translated from both scalac and ft-declosurify point
+For understanding on a high-level what ft-declosurify does let's see how List(1,
+2, 3).map(_ + 1) is translated from both scalac and ft-declosurify point
 of views. List(1, 2, 3).map(_ + 1) is a shortcut for List(1, 2, 3).map(x => x +
 1), where x => x + 1 is an anonymous function -closure- that returns its
 argument incremented by one.
@@ -147,7 +147,7 @@ execution and so it's much easier for JVM to inline the local1$1 method and
 reason about further optimizations.
 
 
-Section: How ft-declosurify works
+Section: ft-declosurify implementation
 
 Subsection: macroMap/macroForeach definition
 
@@ -169,11 +169,27 @@ standard library's map method is defined too. It's definition is:
 ``def macroMap[B, That](f0: A => B)(implicit bf: CanBuildFrom[Repr, B, That]):
 That = ???''
 
+Its definition is exactly the same as the map's one. Regarding the type
+parameters, A is the collection's element type and, so, the f0's argument type,
+B is f0's return type, Repr is the underlying collection's type and That is the
+generated collection's type. Also, it accepts two parameter lists, i.e. it's a
+curried method. The first parameter list accepts the operation's function. The
+second parameter gets an implicit CanBuildFrom object. CanBuildFrom objects are
+builder factories which generate the appropriate
+scala.collection.generic.Builder objects depeding on their type parameters.
+Generally, builders makes the creation of new collection out of existing ones
+easier and more maintable. For example, a CanBuildFrom[List[String], Int,
+Array[Int]] object will create a Builder[Int, Array[Int]] object which can
+create an Array of integers out of a List of strings. Since bf is implicit, it
+will usually be generated and passed from the compiler automatically.
+
+The ??? is an actual special Scala method which is used to throw
+NotImplementedError exceptions. Ours macroMap implementation will be generated
+at compile-time, as we will explain in the next subsections, so no exception is
+raised, it's here just to prevent syntax erros.
 
 
-
-
-Subsection: Putting ft-declosurify functionality in the Scala standard library
+Subsection: ft-declosurify in the Scala standard library
 
 ft-declosurify is based on the  Paul Phillips's declosurify project {cite}. The
 ft prefix stands for fast-track and we will explain here what it
@@ -188,10 +204,10 @@ doesn't have access to the new compile-time reflection capabilities since it
 doesn't depend on the
 scala-reflect and scala-compiler packages, so we can't have definition like
 ``def m(x: T): R = macro implRef'' in it. As a solution, we
-used the scala
-compiler's FastTrack mechanism defined in scala.tools.reflect.FastTrack
-trait. Basically, it's a low level mechanism to invoke macro expansions for
-builtin macros. One such builtin macro is the reify function itself  we saw in
+used the scala compiler's FastTrack mechanism defined in
+scala.tools.reflect.FastTrack trait. Basically, it's a low level mechanism to
+invoke macro expansions for builtin macros. One such builtin macro is the reify
+function itself  we saw in
 the previous chapter. FastTrack module uses a registry where you link
 method's compiler Symbols with special handler methods. For example, whenever
 the compiler sees a Symbol representing a reify's application, it calls its
@@ -257,10 +273,12 @@ is going to return
 - outCollTpe: the internal compiler type of the collection our macroMap is going
 to return
 
-The last element is the AST of a scala.collection.generic.CanBuildFrom [cite
-adrian moors phd] object that makes easier and more maintable the creation of
-new collection out of existing ones. It's used thoroughly through out the
-standard library and we make use of it   
+The last element is the AST of the implicit
+scala.collection.generic.CanBuildFrom [cite adrian moors phd] object that got
+inserted by the compiler at the macroMap call-site. That provides us with an
+easy and accurate way to create the appropriate builder for the generated
+collection taking advantage of all the existing implicit CanBuildFrom objects
+that are declared in the standard library.
 
 It's easy to observe that all of second parameter list types are prepended
 with the context object c0. That qualified notation realizes the notion of
@@ -328,7 +346,8 @@ The reasons we need differrent implementations for different kinds of
 prefixes are:
 - Each kind has different API, e.g., different supported methods
 - Different implementation logic is needed for each kind in order to produce
-faster code, by exploiting specific kinds' characteristics.
+faster code, by exploiting each kinds' specific characteristics since the same
+methods might take different time on different collections.
 
 Here we see how important reifying and splicing operations are. The mentioned
 ASTs that we splice inside the reify above are constructed with one of these
@@ -341,22 +360,20 @@ Whatever AST is returned from the reify will eventually replace the macro
 application's AST in the first place.
 
 
-Subsection: Map implementation idiosyncrasy
+Subsection: Handling map's idiosyncrasy
 
 In contrast to most of the other collections operations, a map operation can
 generate a collection that has the same type constructor as the prefix
 collection but possibly with a different element type, or even a entirely
 different collection type. As an example of the former case, if f is a function
-from String to Int, and xs is a List[String], then xs map f should give a
-List[Int]. Likewise, if ys is an Array[String], then ys map f should give a
-Array[Int]. This case is handled by our implementation, by generating the
-proper builder for the generated collection (line XX-YY) since its element
-type is the  
- 
-
-One subtle implementation point is that, after the map/macroMap application, the
-generated collection can have a different 
-
+from String to Int, and xs is a List[String], then xs map f gives a List[Int].
+Likewise, if ys is an Array[String], then ys map f gives a Array[Int]. As an
+example of the later case,   ``Map("a" -> 1, "b" -> 2) map { case (x, y) => y
+}'' returns List(1, 2) of type scala.collection.immutable.Iterable[Int],
+which is different from the prefix's Map type. The upstream declosurify project
+could handle partially only the first case. ft-declosurify can handle both of
+the cases successfully due to the introduction of the implicit CanBuildFrom
+object, making it more general purpose.
 
 
 Subsection: Arrays, scala.collection.mutable.ArraysOps and
