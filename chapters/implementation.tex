@@ -88,7 +88,7 @@ object ListMapCompilation extends App {
 The only difference here is the use of macroMap instead of the plain map. It's
 translated into:
 
-[obsolete example, cbf & builder free method are added]
+[TODO: obsolete example, cbf & builder free method have been added]
 package src.main.scala {
   object ListMapCompilation extends Object with App {
     def <init>(): src.main.scala.ListMapCompilation.type = {
@@ -463,6 +463,7 @@ immutable.this.Vector.canBuildFrom[Int].apply();
   buf.result
 }
 
+[TODO: move builder description to ``ft-declosurify big picture`` section]
 Here we use a scala.collection.mutable.Builder object to construct the target
 collection, which is a Vector too. The builder itself is created from the
 canBuildFrom object the compiler passed in implicitly as we explained
@@ -481,8 +482,87 @@ scala.collection.immutable.Vector(1, 2, 3).map(_ + 1).
 
 
 Subsection: scala.collection.LinearSeq Transformation
-[Add example with List]
 
+This category includes scala.collection.immutable.List,
+scala.collection.immutable.Stream, scala.collection.immutable.Queue,
+scala.collection.immutable.Stack, scala.collection.mutable.MutableList,
+scala.collection.mutable.MutableList, scala.collection.mutable.LinkedList,
+scala.collection.mutable.DoubleLinkedList. All of these collections are linear.
+For example, in this category's transformation we couldn't use the apply (for
+indexing) or the length method because both of them take linear time, instead of
+constant. The transformation is defined on lines XX-YY. As an example, any
+macroMap applications on scala.collection.immutable.List like:
+
+List(1, 2, 3).macroMap(_ + 1)
+
+will be replaced from:
+
+{
+  private def local1(x$1: Int): Int = x$1.+(1);
+  private def builder1: scala.collection.mutable.Builder[Int,List[Int]] = {
+    val b: scala.collection.mutable.Builder[Int,List[Int]] =
+immutable.this.List.canBuildFrom[Int].apply();
+    b.sizeHint(immutable.this.List.apply[Int](1, 2, 3));
+    b
+  };
+  val buf = builder1();
+  var these = immutable.this.List.apply[Int](1, 2, 3);
+  while(!these.isEmpty){
+    buf.+=(local1(these.head));
+    these = these.tail
+  };
+  buf.result
+}
+
+This category uses this transformation because:
+- isEmpty takes constant time
+- head takes constant time
+- tail takes constant time
+
+In the next chapter will see how much faster this version is compared to List(1,
+2, 3).map(_ + 1).
 
 Subsection: scala.collection.Traversable Transformation
-[Regards the rest of the Scala collections. Add example with e.g. Vector]
+
+This category includes all colletions that don't fit in any of the previous
+categories. Roughly it includes all kinds of Sets, Maps, Buffers and more
+specialized sequences. Obviously, since it includes such a broad range of
+collections we are allowed to use only methods that are supported from all
+collections, meaning we cannot use the length, apply, head, tail methods of the
+previous transformations. The transformation is defined on lines XX-YY. As an
+example, any macroMap applications on scala.collection.immutable.Map like:
+
+Map(1->"a", 2->"b", 3->"c").macroMap(_._2)
+
+will be replaced from:
+
+{
+  private def local1(x$1: (Int, String)): String = x$1._2;
+  private def builder1:
+scala.collection.mutable.Builder[String,scala.collection.immutable.Iterable[
+String]] = {
+    val b:
+scala.collection.mutable.Builder[String,scala.collection.immutable.Iterable[
+String]] = immutable.this.Iterable.canBuildFrom[String].apply();
+    b.sizeHint(scala.this.Predef.Map.apply[Int,
+String](scala.this.Predef.any2ArrowAssoc[Int](1).->[String]("a"),
+scala.this.Predef.any2ArrowAssoc[Int](2).->[String]("b"),
+scala.this.Predef.any2ArrowAssoc[Int](3).->[String]("c")));
+    b
+  };
+  val buf = builder1();
+  val it = scala.this.Predef.Map.apply[Int,
+String](scala.this.Predef.any2ArrowAssoc[Int](1).->[String]("a"),
+scala.this.Predef.any2ArrowAssoc[Int](2).->[String]("b"),
+scala.this.Predef.any2ArrowAssoc[Int](3).->[String]("c")).toIterator;
+  while(it.hasNext){
+    buf.+=(local1(it.next));
+  };
+  buf.result
+}
+
+Here, we use the iterator method to generate a prefix's iterator object. All
+collections have an iterator method since all of them implement the
+scala.collection.Iterable trait. Each collection implements it using its
+scala.collection.Traversable's foreach method, which is implemented according to
+each collection's special characteristics in order to be more efficient.
