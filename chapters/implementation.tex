@@ -530,36 +530,30 @@ specialized sequences. Obviously, since it includes such a broad range of
 collections we are allowed to use only methods that are supported from all
 collections, meaning we cannot use the length, apply, head, tail methods of the
 previous transformations. The transformation is defined on lines XX-YY. As an
-example, any macroMap applications on scala.collection.immutable.Map like:
+example, any macroMap applications on scala.collection.immutable.Set like:
 
-Map(1->"a", 2->"b", 3->"c").macroMap(_._2)
+Set(1, 2, 3).macroMap(_ + 1)
 
 will be replaced from:
 
 {
-  private def local1(x$1: (Int, String)): String = x$1._2;
+  private def local1(x$1: Int): Int = x$1.+(1);
   private def builder1:
-scala.collection.mutable.Builder[String,scala.collection.immutable.Iterable[
-String]] = {
+scala.collection.mutable.Builder[Int,scala.collection.immutable.Set[Int]] = {
     val b:
-scala.collection.mutable.Builder[String,scala.collection.immutable.Iterable[
-String]] = immutable.this.Iterable.canBuildFrom[String].apply();
-    b.sizeHint(scala.this.Predef.Map.apply[Int,
-String](scala.this.Predef.any2ArrowAssoc[Int](1).->[String]("a"),
-scala.this.Predef.any2ArrowAssoc[Int](2).->[String]("b"),
-scala.this.Predef.any2ArrowAssoc[Int](3).->[String]("c")));
+scala.collection.mutable.Builder[Int,scala.collection.immutable.Set[Int]] =
+immutable.this.Set.canBuildFrom[Int].apply();
+    b.sizeHint(r);
     b
   };
   val buf = builder1();
-  val it = scala.this.Predef.Map.apply[Int,
-String](scala.this.Predef.any2ArrowAssoc[Int](1).->[String]("a"),
-scala.this.Predef.any2ArrowAssoc[Int](2).->[String]("b"),
-scala.this.Predef.any2ArrowAssoc[Int](3).->[String]("c")).toIterator;
+  val it = r.toIterator;
   while(it.hasNext){
     buf.+=(local1(it.next));
   };
   buf.result
 }
+
 
 Here, we use the iterator method to generate a prefix's iterator object. All
 collections have an iterator method since all of them implement the

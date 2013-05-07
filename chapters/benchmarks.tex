@@ -1,0 +1,72 @@
+Section: Benchmarking Configuration
+
+In this chapter we will benchmark all the categories we explored in
+the previous chapter against their default Scala counterparts. We choose a few
+representative collections for each category in order to see how the different
+transformation strategies and the different collections characteristics affect
+the speedups.
+
+We used the ScalaMeter [cite] microbenchmarking and performance regression
+testing framework for the JVM platform. We use the same benchmark template for
+all the different categories. The code for the Array benchmarking is at Appendix
+X. In short, these benchmarks compare the macroMap's speed against map's speed
+on different sizes of the same collection.
+
+In order to make the benchmarking process more stable, reproducible and reliable
+we have tweaked the benchmark template with the following parameters:
+- each measurement of map/macroMap on a specific collection size is run 25
+times successively
+- the 25 measurents are divided on 5 separate JVM instances
+- every 2 measurements the current collection is reinstantiated
+- every 2 measurements a full GC cycle is forced
+
+
+
+Section: Benchmarks
+
+Subsection: Arrays, scala.collection.mutable.ArraysOps and
+scala.collection.mutable.IndexedSeq Benchmarks
+
+In this category, we chose Array and scala.collection.mutable.ArraySeq as they
+are the two most common representatives.
+
+Array
+
+::Benchmark Array.macroMap::
+Parameters(size -> 500000): 0.56097312
+Parameters(size -> 700000): 0.7099738800000001
+Parameters(size -> 900000): 0.9576477599999998
+Parameters(size -> 1100000): 1.21228168
+Parameters(size -> 1300000): 1.4722931200000002
+Parameters(size -> 1500000): 1.7399196000000001
+
+::Benchmark Array.map::
+Parameters(size -> 500000): 4.45799216
+Parameters(size -> 700000): 6.299174839999998
+Parameters(size -> 900000): 8.08378432
+Parameters(size -> 1100000): 9.788586
+Parameters(size -> 1300000): 11.55207984
+Parameters(size -> 1500000): 13.33556824
+
+
+ArraySeq
+
+::Benchmark ArraySeq.macroMap::
+Parameters(size -> 500000): 3.4582486400000003
+Parameters(size -> 700000): 4.749739399999998
+Parameters(size -> 900000): 6.064567839999999
+Parameters(size -> 1100000): 7.423919880000001
+Parameters(size -> 1300000): 8.668609240000002
+Parameters(size -> 1500000): 9.92232472
+
+::Benchmark ArraySeq.map::
+Parameters(size -> 500000): 7.631767120000001
+Parameters(size -> 700000): 11.0168042
+Parameters(size -> 900000): 13.058838600000001
+Parameters(size -> 1100000): 16.710358120000002
+Parameters(size -> 1300000): 19.27880912
+Parameters(size -> 1500000): 22.4225422
+
+
+Subsection: scala.collection.IndexedSeq Benchmarks
+
