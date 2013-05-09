@@ -89,6 +89,15 @@ The only difference here is the use of macroMap instead of the plain map. It's
 translated into:
 
 [TODO: obsolete example, cbf & builder free method have been added]
+[TODO: integrate builder description to ``ft-declosurify big picture`` section]
+Here we use a scala.collection.mutable.Builder object to construct the target
+collection, which is a Vector too. The builder itself is created from the
+canBuildFrom object the compiler passed in implicitly as we explained
+previously. The builder creation and initialization takes place in the
+builder1 method. While we traverse the prefix, we apply the local function to
+all elements and we append (through method +=) them to the builder. When the
+traversal is over, we call the builder's result method which returns the full
+target collection we want (a Vector in this example).
 package src.main.scala {
   object ListMapCompilation extends Object with App {
     def <init>(): src.main.scala.ListMapCompilation.type = {
@@ -425,61 +434,19 @@ category are:
 - the update method is supported, since all collections of this category are
 mutable
 
-In the next chapter will see how much faster this version is compared to
-Array(1, 2, 3).map(_ + 1).
+Also, all of this category's collections can only be mutated through the
+update method (the assignment operator) on a specific index, with one
+exception, the scala.collection.mutable.ArrayBuffer. ArrayBuffer supports
+mutating methods for appending/removing elements which could affect the
+semantics of macroMap in case we mutate the underlying collection in the
+function we pass in macroMap. Our transformation seems to behave in the same
+way as the default map method. For example both ``buf map {
+x => buf += x; x+1 }'' and ``buf macroMap { x => buf += x;
+x+1 }'' return ArrayBuffer(2, 3, 4). So, we assume the macroMap keeps the
+same semantics on the ArrayBuffer as the original map method.
 
-Subsection: scala.collection.IndexedSeq Transformation
-
-All classes that implement the scala.collection.IndexedSeq trait share this
-transformation. Examples of such classes in the standard library are
-scala.collection.immutable.Vector, scala.collection.immutable.NumericRange and
-scala.collection.immutable.Range. All of them are share the same transformation,
-since all of them are indexed *immutable* sequences, so for example they don't
-support the update method we saw in the previous category. The transformation
-is defined on lines XX-YY. As an example, any macroMap applications on
-scala.collection.immutable.Vector like:
-
-scala.collection.immutable.Vector(1, 2, 3).macroMap(_ + 1)
-
-will be replaced from:
-
-{
-  private def local1(x$1: Int): Int = x$1.+(1);
-  private def builder1:
-scala.collection.mutable.Builder[Int,scala.collection.immutable.Vector[Int]] = {
-    val b:
-scala.collection.mutable.Builder[Int,scala.collection.immutable.Vector[Int]] =
-immutable.this.Vector.canBuildFrom[Int].apply();
-    b.sizeHint(scala.collection.immutable.Vector.apply[Int](1, 2, 3));
-    b
-  };
-  val buf = builder1();
-  val xs = scala.collection.immutable.Vector.apply[Int](1, 2, 3);
-  var i = 0;
-  while(i.<(xs.length)){
-    buf.+=(local1(xs(i)));
-    i = i.+(1)
-  };
-  buf.result
-}
-
-[TODO: move builder description to ``ft-declosurify big picture`` section]
-Here we use a scala.collection.mutable.Builder object to construct the target
-collection, which is a Vector too. The builder itself is created from the
-canBuildFrom object the compiler passed in implicitly as we explained
-previously. The builder creation and initialization takes place in the
-builder1 method. While we traverse the prefix, we apply the local function to
-all elements and we append (through method +=) them to the builder. When the
-traversal is over, we call the builder's result method which returns the full
-target collection we want (a Vector in this example).
-
-The reasons we chose this transformation path for this category are:
-- the length method here takes constant time
-- the element selection through xs.apply(i) takes constant time
-
-In the next chapter will see how much faster this version is compared to
-scala.collection.immutable.Vector(1, 2, 3).map(_ + 1).
-
+In the next chapter will see how much faster this version is compared to the
+default map on Arrays.
 
 Subsection: scala.collection.LinearSeq Transformation
 
@@ -519,14 +486,14 @@ This category uses this transformation because:
 - head takes constant time
 - tail takes constant time
 
-In the next chapter will see how much faster this version is compared to List(1,
-2, 3).map(_ + 1).
+In the next chapter will see how much faster this version is compared to the
+default map on Lists.
 
 Subsection: scala.collection.Traversable Transformation
 
 This category includes all colletions that don't fit in any of the previous
-categories. Roughly it includes all kinds of Sets, Maps, Buffers and more
-specialized sequences. Obviously, since it includes such a broad range of
+categories. Roughly it includes all kinds of Sets, Maps, Buffers and
+immutable.IndexedSeqs. Obviously, since it includes such a broad range of
 collections we are allowed to use only methods that are supported from all
 collections, meaning we cannot use the length, apply, head, tail methods of the
 previous transformations. The transformation is defined on lines XX-YY. As an
@@ -560,3 +527,9 @@ collections have an iterator method since all of them implement the
 scala.collection.Iterable trait. Each collection implements it using its
 scala.collection.Traversable's foreach method, which is implemented according to
 each collection's special characteristics in order to be more efficient.
+
+For the collections that implement the immutable.IndexedSeq trait, like Vector,
+we could have used a modified version of the mutable indexed sequences
+transformation where we would use a builder object to build the target
+collection, since we cannot mutate it in place. Interestingly, our experiments
+showed us that solution was slower than the current one.

@@ -68,5 +68,60 @@ Parameters(size -> 1300000): 19.27880912
 Parameters(size -> 1500000): 22.4225422
 
 
-Subsection: scala.collection.IndexedSeq Benchmarks
+Subsection: scala.collection.LinearSeq Benchmarks
+
+::Benchmark List.macroMap::
+Parameters(size -> 500000): 6.2594368
+Parameters(size -> 700000): 8.48611428
+Parameters(size -> 900000): 10.796582320000002
+Parameters(size -> 1100000): 12.769916
+Parameters(size -> 1300000): 15.4103694
+Parameters(size -> 1500000): 16.79051676
+
+::Benchmark List.map::
+Parameters(size -> 500000): 8.491728160000001
+Parameters(size -> 700000): 12.166298400000002
+Parameters(size -> 900000): 14.759927480000002
+Parameters(size -> 1100000): 17.83202016
+Parameters(size -> 1300000): 20.578929839999997
+Parameters(size -> 1500000): 23.08220884
+
+
+Subsection: scala.collection.Traversable Transformation
+
+Set
+
+::Benchmark Set.macroMap::
+Parameters(size -> 500000): 221.49879935999996
+Parameters(size -> 700000): 404.7653434
+Parameters(size -> 900000): 517.1970278800001
+Parameters(size -> 1100000): 780.3368136800001
+Parameters(size -> 1300000): 980.5737080400002
+Parameters(size -> 1500000): 1196.13017984
+
+::Benchmark Set.map::
+Parameters(size -> 500000): 225.10970228
+Parameters(size -> 700000): 428.7541246000001
+Parameters(size -> 900000): 552.35796532
+Parameters(size -> 1100000): 783.1912343599998
+Parameters(size -> 1300000): 1021.149488
+Parameters(size -> 1500000): 1256.03854812
+
+
+Vector
+::Benchmark Vector.macroMap::
+Parameters(size -> 500000): 4.3560588000000005
+Parameters(size -> 700000): 6.97072312
+Parameters(size -> 900000): 9.13849436
+Parameters(size -> 1100000): 11.800523919999998
+Parameters(size -> 1300000): 13.052000560000003
+Parameters(size -> 1500000): 15.433811600000002
+
+::Benchmark Vector.map::
+Parameters(size -> 500000): 7.798935959999999
+Parameters(size -> 700000): 9.82132696
+Parameters(size -> 900000): 12.20604608
+Parameters(size -> 1100000): 14.643066959999999
+Parameters(size -> 1300000): 16.92755692
+Parameters(size -> 1500000): 19.05916
 
