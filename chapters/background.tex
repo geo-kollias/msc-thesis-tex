@@ -3,15 +3,15 @@ Section: The Problem
 In 'Fixing The Inlining ``Problem''' [cite], Cliff Click describes an issue
 that has emerged the last few years in the JVM ecosystem:
 
-``“The Problem” is simply this: new languages on the JVM (e.g. JRuby) and new
+``The Problem is simply this: new languages on the JVM (e.g. JRuby) and new
 programming paradigms (e.g. Fork Join) have exposed a weakness in the current
 crop of inlining heuristics.  Inlining is not happening in a crucial point in
 hot code exposed by these languages, and the lack of inlining is hurting
 performance in a major way.  AND the inlining isn’t happening because The
 Problem is a hard one to solve; (i.e. it’s not the case that we’ll wave our
 wands and do a quick fix & rebuild HotSpot and the problem will go away).   John
-Rose, Doug Lea and I all agree that it’s a Major Problem facing JVMs with long
-and far reaching implications.``
+Rose, Doug Lea and I all agree that it's a Major Problem facing JVMs with long
+and far reaching implications.''
 
 Let's see what The Problem is with a small example in a Java-like language. The
 Problem is getting the right amount of context in hot inner loops – which also
@@ -33,13 +33,13 @@ inlining the compiler doesn’t know what the loop body does (because function
 calls can in general do anything), and with inlining it can understand the
 entire function completely – and then see it’s a simple loop around a stream of
 array references.  At this point the JIT can do range-check elimination, loop
-unrolling, and prefetching among other optimizations.
+unrolling, and prefetching, among other optimizations.
 
 The Problem is that there are multiple variations on “or_word” \emph{and}
 the wrapping iterator gets complex.  It’s the product of these two parts getting
 complicated that makes The Problem.
 
-Suppose the wrapping blit iterator gets complex – it’s walking all the bits in a
+Suppose the wrapping blit iterator gets complex - it’s walking all the bits in a
 canvas of partially obscured rectangular images, and each image is a collection
 of 24 bits worth of pixels and is possibly boxed or bounded by some other
 rectangles:
@@ -59,7 +59,8 @@ rectangles:
     }
   }
   
-Now on top of the complex iterator we want to do something other than “or_word“.
+Now on top of the complex iterator we want to do something other than
+``or_word''.
   We might also want to “and_word” (good for masking out images), “xor_word”
 (merging images), “scale_word“,  “filter” and so on.  What we really want is a
 way to pass in the function to apply on the basic data bits in the innermost
@@ -78,46 +79,45 @@ of things with Images.  Alas, that inner loop now contains a function call that
 needs inlining and there are dozens of different functions for “fcn2arg.call”. 
 The JIT does not know which one to inline here – because all dozen different
 functions are called at various times.  Typically then the JIT does not inline
-any of them, and instead opts for a virtual call.  Alas, while the virtual call
+any of them, and instead opts for a virtual call.  While the virtual call
 itself isn’t too bad the lack of knowledge of what goes on inside the virtual
 call prevents all kinds of crucial optimizations: loop unrolling, range-check
 elimination, all kinds of prefetching and alias analyses.
 
 One solution  would be to make the inner function call a static (final) call -
 then the JIT can inline. Of course, if we do that we need an iterator for the
-“or_word” version, and one for the “and_word” version and one for the “xor_word”
-version and so we need a lot of them. Also, we will need a new one for each
-new function we can think of; we can't just name them all up front.  So we’ll
-end up with a ton of these iterators each with a custom call in the inner loop.
+“or_word” version, one for the “and_word” version, and one for the “xor_word”
+version, so we need a lot of them. Also, we will need a new one for each
+new function we can think of; we cannot just name them all up front.  So we will
+end up with a lot of these iterators each with a custom call in the inner loop.
 All these iterators will start blowing out the instruction cache on our CPU, and
-besides it'a pain to maintain dozens of cloned complex iterators.
+besides it's a pain to maintain dozens of cloned complex iterators.
 
 Several Java ecosystem's prominent figures, like Cliff Click, John Rose, Doug
-Lea, have proposed several solution that range from pure obscure technical
-solutions to pure educational solutions, demonstrating possible ``megamorphic
-inlining friendly'' coding styles.
+Lea, have proposed solutions that range from pure obscure technical to pure
+educational ones, demonstrating possible ``megamorphic inlining friendly''
+coding styles.
 
 Scala, as most of the modern JVM languages, is no exception and it suffers from
 The Problem too and, actually, it affects its adoption negatively. At the end of
-2011 an email from a Yammer's employer towards the TypeSafe's CEO, about Scala
+2011, an email from a Yammer employee towards TypeSafe's CEO, about Scala
 shortcomings, leaked to the public {cite
 http://www.infoq.com/news/2011/11/yammer-scala}. Most complaints were related
 with The Problem and, more specifically, with the Scala standard
 library collections' performance. In the next chapter we will see where exactly
-the problem lies and how the Scala macros can help us alleviate it. Before
-that, it would be helpful to overview the Scala collections hierrarchy and the
-Scala macros.
+the problem lies and how Scala macros can help us alleviate it. Before that, it
+would be helpful to overview the Scala collections and Scala macros.
 
 
 Section: Scala Collections Overview
 
-Scala collections systematically distinguish between mutable and immutable
+The Scala library systematically distinguishes between mutable and immutable
 collections. A mutable collection can be updated or extended in place. This
-means you can change, add, or remove elements of a collection as a side effect.
-Immutable collections, by contrast, never change. You have still operations that
-simulate additions, removals, or updates, but those operations will in each case
-return a new collection and leave the old collection unchanged. We will see in
-the next chapter how this mutable-immutable separation affects our macro
+means one can change, add, or remove elements of a collection as a side effect.
+Immutable collections, by contrast, never change. We still have operations
+that simulate additions, removals, or updates, but these operations will in each
+case return a new collection and leave the old collection unchanged. We will see
+in the next chapter how this mutable-immutable separation affects our macro
 transformation plan.
 
 All collection classes are found in the package scala.collection or one of its
@@ -129,13 +129,13 @@ mutability.
 
 A collection in package scala.collection.immutable is guaranteed to be immutable
 for everyone. Such a collection will never change after it is created.
-Therefore, you can rely on the fact that accessing the same collection value
+Therefore, one can rely on the fact that accessing the same collection value
 repeatedly at different points in time will always yield a collection with the
 same elements.
 
 A collection in package scala.collection.mutable is known to have some
 operations that change the collection in place. So dealing with mutable
-collection means you need to understand which code changes which collection
+collections means one needs to understand which code changes which collection
 when.
 
 A collection in package scala.collection can be either mutable or immutable. For
@@ -153,30 +153,30 @@ collection themselves. Even though the static type of such a collection provides
 no operations for modifying the collection, it might still be possible that the
 run-time type is a mutable collection which can be changed by other clients.
 
-By default, Scala always picks immutable collections. For instance, if you just
-write Set without any prefix or without having imported Set from somewhere, you
-get an immutable set, and if you write Iterable you get an immutable iterable
+By default, Scala always picks immutable collections. For instance, if we just
+write Set without any prefix or without having imported Set from somewhere, we
+get an immutable set, and if we write Iterable we get an immutable iterable
 collection, because these are the default bindings imported from the scala
-package. To get the mutable default versions, you need to write explicitly
+package. To get the mutable default versions, we need to write explicitly
 collection.mutable.Set, or collection.mutable.Iterable.
 
 The following figure shows all collections in package scala.collection. These
 are all high-level abstract classes or traits, which generally have mutable as
-well as immutable implementations.
+well as immutable implementations. (figure from ...)
 
 [figure]
 
 The following figure shows all collections in package
-scala.collection.immutable.
+scala.collection.immutable. (figure from ...)
 
 [figure]
 
 And the following figure shows all collections in package
-scala.collection.mutable.
+scala.collection.mutable. (figure from ...)
 
 [figure]
 
-This work focus mainly on the Seq's subtree, since it's where we can get the
+This work focuses mainly on Seq's subtree, since it's where we can get the
 most prominent speedups by exploiting the sequences' properties. A sequence is a
 kind of iterable that has a length method and whose elements have fixed index
 positions, starting from 0.
@@ -186,7 +186,7 @@ Section: Scala Def Macros
 
 Since our implementation uses functionality from the newly introduced Scala
 macros {cite Scala Macros, a Technical Report} let's firstly see the motivation
-for adding them in a programming language and then a simple real example.
+for adding macros in a programming language and then a simple real example.
 
 
 Subsection: Motivation
@@ -206,8 +206,8 @@ A macro system for Scala allows programmers to write macro defs: functions that
 are transparently loaded by the compiler and executed during compilation. This
 realizes the notion of compile-time metaprogramming for Scala.
 
-Our project falls in the third category where we use the macros to optimize the
-Scala collections.
+Our project falls in the third category, since we use macros to optimize
+the Scala collections.
 
 
 Subsection: Example
@@ -224,12 +224,13 @@ implementation method.
 If, during type-checking, the compiler encounters an application of the macro
 m(args), it will expand that application by invoking the corresponding macro
 implementation method, with the abstract-syntax trees (ASTs) of the argument
-expressions args as arguments. The result of the macro implementation is another
-AST, which will be inlined at the call site and will be type-checked in turn.
+expressions, args, as arguments. The result of the macro implementation is
+another AST, which will be inlined at the call site and will be type-checked in
+turn.
 
-The following code snippet declares a macro definition assert that references a
-macro implementation Asserts.assertImpl (definition of assertImpl is provided
-below):
+The following code snippet declares a macro definition, assert, that references
+a macro implementation Asserts.assertImpl (the definition of assertImpl is
+provided below):
 
 def assert(cond: Boolean, msg: Any) = macro Asserts.assertImpl
 
@@ -264,12 +265,13 @@ object Asserts {
 Apply(Ident(newTermName("raise")), List(msg.tree)), Literal(Constant(()))))
 }
 
-As the example shows, a macro implementation takes several parameter lists.
-First comes a single parameter, of type scala.reflect.macros.Context. This is
-followed by a list of parameters that have the same names as the macro
-definition parameters. But where the original macro parameter has type T, a
-macro implementation parameter has type c.Expr[T]. Expr[T] is a type defined in
-Context that wraps an AST of type T. The result type of the
+As the example shows, a macro implementation takes several parameter lists,
+i.e., it's a curried method. First comes a single parameter, of type
+scala.reflect.macros.Context. This is followed by a list of parameters that have
+the same names as the macro definition parameters. But where the original macro
+parameter has type T, a macro implementation parameter has type c.Expr[T], which
+is a path-dependent type and will be explained in the next chapter. Expr[T] is a
+type defined in Context that wraps an AST of type T. The result type of the
 assertImpl macro implementation is again a wrapped tree, of type c.Expr[Unit].
 
 
@@ -278,7 +280,7 @@ Subsection: Hygiene
 Obviously the AST construction in the last example of the
 previous section is cumbersome and error-prone. But it is also wrong. The tree
 produced from a macro will be inlined and type-checked at the macro call site.
-But that means that the identifier raise will be type-checked at a point where
+But this means that the identifier raise will be type-checked at a point where
 it is most likely not visible, or in the worst case they might refer to
 something else. In the macro literature, this insensitivity to bindings is
 called non-hygienic {cite [19, 8]}.
@@ -306,18 +308,18 @@ the AST passed to it will be recreated at macro-expansion time
 create syntax trees from Scala code: pass the Scala code to reify, and the
 result will be a syntax tree that represents that very same code.
 
-Moreover, reify packages the result expression tree with the types and values of
-all free references that occur in it. This means in effect that all
+Specifically, reify packages the result expression tree with the types and
+values of all free references that occur in it. This means in effect that all
 free references in the result are already resolved, so that re-typechecking the
 tree is insensitive to its environment. All identifiers referred to from
 an expression passed to reify are bound at the definition site, and not re-bound
-at the call site. As a consequence, macros that generate trees only by the means
+at the call site. As a consequence, macros that generate trees only by means
 of passing expressions to reify are hygienic.
 
-So in that sense, Scala macros are self-cleaning. Their basic form is minimal
+So, in a sense, Scala macros are self-cleaning. Their basic form is minimal
 and unhygienic, but that simple form is expressive enough to formulate a
-reify macro, which can be used in turn to make tree construction in
-macros concise and hygienic.
+reify macro, which in turn can be used to make tree construction in macros
+concise and hygienic.
 
 object Asserts {
   def assertionsEnabled = . . .
@@ -332,8 +334,8 @@ object Asserts {
       c.reify(())
 }
 
-Here, we see that we can use the Expr's splice method inside the reify in order
-to inject other trees (Expr).
+Here, we see that we can use the Expr's splice method inside the reify
+expression in order to inject other trees.
 
-Reification and splicing are crucial to our implementation which will see in
+Reification and splicing are crucial to our implementation, which we will see in
 the next chapter.

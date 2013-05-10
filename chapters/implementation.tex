@@ -1,15 +1,19 @@
 Section: ft-declosurify big picture
 
-For understanding, on a high-level what ft-declosurify does let's see how
-List(1, 2, 3).map(_ + 1) is translated from both scalac and ft-declosurify point
-of views. List(1, 2, 3).map(_ + 1) is a shortcut for List(1, 2, 3).map(x => x +
-1), where x => x + 1 is an anonymous function -closure- that returns its
-argument incremented by one.
-Applying that function to the List(1, 2, 3) will result to a new list List(2,
-3, 4). Since Scala code is translated into Java bytecode at the end and, since,
-Java  doesn't support any notion of functions inherently, at least up to Java 7,
-this anonymous function should be translated somehow in constructs that are
-supported by the Java bytecode. The trivial Scala program below:
+Our project is called ft-declosurify and it is based on Paul Phillips's
+declosurify project {cite}. The ft prefix stands for fast-track and we will
+explain later what it means and how these projects differ.
+
+For understanding at a high-level what ft-declosurify does let's see how
+List(1, 2, 3).map(_ + 1) is translated from both the scalac and
+the ft-declosurify points of view. List(1, 2, 3).map(_ + 1) is a shortcut for
+List(1, 2, 3).map(x => x + 1), where x => x + 1 is an anonymous function
+-closure- that returns its argument incremented by one.
+Applying that function to the List(1, 2, 3) will result in a new list List(2,
+3, 4). Since Scala code is translated into Java bytecode at the end and since
+Java  doesn't support any notion of functions inherently, this anonymous
+function should be translated somehow in constructs that are supported by the
+Java bytecode. The trivial Scala program below:
 
 package src.main.scala
 object ListMapCompilation extends App {
@@ -24,9 +28,8 @@ package src.main.scala {
       ListMapCompilation.super.<init>();
       ()
     };
-    def f(): List[Int] =
-immutable.this.List.apply[Int](scala.this.Predef.wrapIntArray(Array[Int]{1, 2,
-3})).map[Int, List[Int]]({
+    def f(): List[Int] = immutable.this.List.apply[Int](Array[Int]{1, 2,
+3}).map[Int, List[Int]]({
       @SerialVersionUID(0) final <synthetic> class $anonfun extends
 scala.runtime.AbstractFunction1[Int,Int] with Serializable {
         def <init>(): anonymous class $anonfun = {
@@ -40,17 +43,18 @@ scala.runtime.AbstractFunction1[Int,Int] with Serializable {
   }
 }
 
-
+The code listing above as well as most of the following listings are slightly
+abbreviated for readability reasons.
 We can see that scalac converts the _ + 1 function into a block of code
 (piece of code between two braces), where a class, called $anonfun, is defined.
 That class extends the AbstractFunction1[Int,Int] class, which is an abstract
 class that represents the functions that take one integer argument and return
 another integer. Inside the class an apply method is defined which is called
-whenever we apply a class' object to one integer argument. The apply's body
+whenever we apply a class object to one integer argument. The apply body
 returns  its argument incremented by one,  e.g., val a1 = new $anonfun();
-a1(5); returns 6. Just after the class definition scalac creates a new object
-of this class and it's what actually returned from that block of code.
-Eventually, the _ + 1 is substituted with an object of a subclass of a class
+a1(5); returns 6. Just after the class definition, scalac creates a new object
+of this class and this is what is actually returned from that block of code.
+Eventually, the _ + 1 is substituted by an object of a subclass of a class
 representing functions internally, which leads us to the conclusion that the
 scala source-level closures are translated to function class objects. Below we
 attach the basic map implementation in the standard Scala library:
@@ -72,7 +76,7 @@ object resulted from new $anonfun() above. f(x) is a
 normal method call on object f and it will be expanded to f.apply(x). We can
 easily see that f's runtime type will, usually, be different on each map call
 since the functions we pass are generally different. Such calls are called
-mega-morphic virtual calls and, currently, are not inlined from the JVM as we
+mega-morphic virtual calls and, currently, are not inlined by the JVM as we
 exlained in the previous chapter. So on
 each map we generally have the added overhead of a dynamic call to the passed
 function object. Even worse, the lack of knowledge of what goes on inside the
@@ -122,10 +126,11 @@ immutable.this.List.apply[Int](scala.this.Predef.wrapIntArray(Array[Int]{1, 2,
 
 Here we see that there is no explicit call to any map method. Instead the
 list's traveral happens directly within a while loop where the local1 local free
-method is applied to all list's elements. The local1 method is called a free
-method since it's not directly attached to any class or object. During the
-scalac's ``flatten'' phase, it will be lifted and become a ListMapCompilation's
-method with a new mangled name. In particular the code above will become:
+method is applied to all of the list's elements. The local1 method is called a
+free method since it's not directly attached to any class or object.
+During scalac's ``flatten'' phase, it will be lifted and become a method of
+ListMapCompilation with a new mangled name. In particular the code
+above will become:
 
 package src.main.scala {
   object ListMapCompilation extends Object with App {
@@ -151,91 +156,88 @@ scala.Int.unbox(these.head()))));
   }
 }
 
-As we can see now, local1is lifted to local1\$1 and its receiver became
-ListMapCompilation.this which will remain unchanged during the program
-execution and so it's much easier for JVM to inline the local1$1 method and
-reason about further optimizations.
+As we can see now, local1is lifted to local1\$1 and its receiver becomes
+ListMapCompilation which will remain unchanged during the program execution.
+It's much easier for JVM to inline the local1$1 method and reason about further
+optimizations.
 
 
 Section: ft-declosurify implementation
 
 Subsection: macroMap/macroForeach definition
 
-macroForeach method, as the standard foreach, is meant to traverse all elements
-of the collection, and apply the given operation, f, to each element. The
-invocation of f is done for its side effect only; in fact any function result of
-f is discarded. Similarly, macroMap, as the standard map, traverses all elements
-of the collection, and apply the given operation, f, to each element but, also,
-it always returns a collection whose type depends on the f. We could see
-macroMap's functionality as a superset of the macroForeach's functionality and
-that's true in the implementation side too. The same code handles both
-cases but, in the case of macroForeach, we ignore the result. For that reason
-and without any loss of generality we will be referring only to the macroMap in
-the rest of the text.
+The macroForeach method, just like the standard foreach, is meant to traverse
+all elements of the collection, and apply the given operation, f, to each
+element. Theinvocation of f is done for its side effect only; in fact any
+function result of f is discarded. Similarly, macroMap, just like the standard
+map, traverses all elements of the collection, and applies the given operation,
+f, to each element but, also, it always returns a collection whose type depends
+on f. We could see macroMap's functionality as a superset of macroForeach's
+functionality and that's true on the implementation side too. The same code
+handles both cases but, in the case of macroForeach, we ignore the result. For
+that reason and without any loss of generality we will be referring only to
+macroMap in the rest of the text.
 
 macroMap is defined in scala.collection.TraversableLike trait, where the
-standard library's map method is defined too. It's definition is:
+standard library's map method is defined too. Its definition is an unusual one:
 
 ``def macroMap[B, That](f0: A => B)(implicit bf: CanBuildFrom[Repr, B, That]):
 That = ???''
 
-Its definition is exactly the same as the map's one. Regarding the type
-parameters, A is the collection's element type and, so, the f0's argument type,
-B is f0's return type, Repr is the underlying collection's type and That is the
-generated collection's type. Also, it accepts two parameter lists, i.e. it's a
+Instead of a usual implementation on the right hand side, we see a ???. The ???
+is an actual special Scala method which is used to throw NotImplementedError
+exceptions. Our macroMap implementation will be generated at compile-time, as
+we will explain in the next subsections, so no exception is raised. It's here
+just to prevent syntax erros. 
+
+The definition signature is exactly the same as the map one. Regarding the
+type parameters, A is the collection's element type and, therefore, f0's
+argument type, B is f0's return type, Repr is the underlying collection's type
+and That is the generated collection's type. Also, as we said, macroMap is a
 curried method. The first parameter list accepts the operation's function. The
 second parameter gets an implicit CanBuildFrom object. CanBuildFrom objects are
 builder factories which generate the appropriate
 scala.collection.generic.Builder objects depeding on their type parameters.
-Generally, builders makes the creation of new collection out of existing ones
+Generally, builders makes the creation of a new collection out of existing ones
 easier and more maintable. For example, a CanBuildFrom[List[String], Int,
 Array[Int]] object will create a Builder[Int, Array[Int]] object which can
 create an Array of integers out of a List of strings. Since bf is implicit, it
-will usually be generated and passed from the compiler automatically.
-
-The ??? is an actual special Scala method which is used to throw
-NotImplementedError exceptions. Ours macroMap implementation will be generated
-at compile-time, as we will explain in the next subsections, so no exception is
-raised, it's here just to prevent syntax erros.
+will usually be generated and passed by the compiler automatically.
 
 
 Subsection: ft-declosurify in the Scala standard library
 
-ft-declosurify is based on the  Paul Phillips's declosurify project {cite}. The
-ft prefix stands for fast-track and we will explain here what it
-means and how they differ. Initially, declosurify could be used as a library
-adding the -extension- methods macroMap and macroForeach on all Scala
-collections that implemented the scala.collection.TraversableOnce trait and
-Arrays, through Scala's implicit conversions {cite implicit conversions}. Since,
-ultimately, we would like to substitute the default map and foreach methods
-with the macroMap and macroForeach implementations respectively, we had to move
-them inside the Scala standard library. Scala standard library
-doesn't have access to the new compile-time reflection capabilities since it
-doesn't depend on the
-scala-reflect and scala-compiler packages, so we can't have definition like
-``def m(x: T): R = macro implRef'' in it. As a solution, we
-used the scala compiler's FastTrack mechanism defined in
-scala.tools.reflect.FastTrack trait. Basically, it's a low level mechanism to
-invoke macro expansions for builtin macros. One such builtin macro is the reify
-function itself  we saw in
-the previous chapter. FastTrack module uses a registry where you link
+The upstream declosurify project can be used as a library adding the -extension-
+methods macroMap and macroForeach on all Scala collections that implement the
+scala.collection.TraversableOnce trait and Arrays, through Scala's implicit
+conversions {cite implicit conversions}. Since, ultimately, we would like to
+substitute the default map and foreach methods with the macroMap and
+macroForeach implementations, respectively, we had to move the definitions
+of macroMap, macroForeach inside the Scala standard library. The Scala standard
+library doesn't have access to the new compile-time reflection capabilities
+since it doesn't depend on the scala-reflect and scala-compiler packages, so we
+cannot have macro definitions in it. As a solution, we used the scala compiler's
+FastTrack mechanism defined in the scala.tools.reflect.FastTrack trait.
+Basically, it's a low level mechanism to invoke macro expansions for builtin
+macros. One such builtin macro is the reify function itself that we saw in
+the previous chapter. The FastTrack module uses a registry where one links a
 method's compiler Symbols with special handler methods. For example, whenever
-the compiler sees a Symbol representing a reify's application, it calls its
-respective FastTrack special handler which has access to reify appication's
+the compiler sees a Symbol representing an application of reify, it calls its
+respective FastTrack special handler which has access to the reify appication's
 call-site context and all of  its arguments' Abstract Syntax Trees (ASTs),
-through pattern matching. Call-site context object, generally, holds call-site
-information like the macro application's enclosing method, its enclosing class,
-its line in the file. The ASTs contain the internal representation of the macro
-application like ``List(1, 2, 3).macroMap(_ + 1)'' i.e., the receiver object,
-the macroMap method call and its function argument. The pattern
-matching happens upon these ASTs so, theoritically, we can choose to match
-successfully against ``List(1,2,3).macroMap(_ + 1)'' but not against ``val r =
-List(1,2,3); r.macroMap(_ + 1)'' depending on our needs. If the pattern matching
-is successful, its respective compiler handler will eventually generate the AST
-which replaces the macro application's AST in the call-site, completing that way
-that low-level macro expansion. In our case, whenever scalac finds a Symbol of
-an application of the scala.collection.TraversableLike trait's macroMap
-method, it triggers the expansion we will describe in the next
+through pattern matching. The call-site context object, generally, holds
+call-site information like the macro application's enclosing method, its
+enclosing class, its line in the file. The ASTs contain the internal
+representation of the macro application like ``List(1, 2, 3).macroMap(_ + 1)''
+i.e., the receiver object, the macroMap method call and its function argument.
+Pattern matching happens upon these ASTs so, theoretically, we can choose to
+match successfully against ``List(1,2,3).macroMap(_ + 1)'' but not against ``val
+r = List(1,2,3); r.macroMap(_ + 1)'' depending on our needs. If the pattern
+matching is successful, its respective compiler handler will eventually generate
+the AST which replaces the macro application's AST in the call-site, completing
+that way the low-level macro expansion. In our case, whenever scalac finds a
+Symbol of an application of the scala.collection.TraversableLike trait's
+macroMap method, it triggers the expansion we will describe in the next
 subsection.
 
 Regular Scala macros implementations can be generic in the sense that they can
@@ -310,7 +312,7 @@ leaning on this heuristic, newer version of the Scala macros provide us with the
 exact name of the calling method.
 
 After that, we check three conditions to ensure that a typical
-transformation can take place (lines XX-ΥΥ):
+transformation can take place (lines XX-YY):
 - the f0 AST is actually a function AST or a block whose last
 expression is a function, since, in Scala, the value of a block is the block's
 last expression.
@@ -320,7 +322,7 @@ the transformation easier.
 
 If any of the above points is not satisfied, then the mapInfix falls back to the
 default map/foreach implementation by generating an AST which
-calls the map/foreach method on the same prefix object (lines XX-ΥΥ).
+calls the map/foreach method on the same prefix object (lines XX-YY).
 
 The next important step is the transformation of the passed closure AST
 into a local free method AST (lines XX-YY). For example, the passed closure ``x
@@ -381,7 +383,7 @@ Whatever AST is returned from the reify will eventually replace the macro
 application's AST in the first place.
 
 
-Subsection: Handling map's idiosyncrasy
+Subsection: Handling map's idiosyncrasies
 
 In contrast to most of the other collections operations, a map operation can
 generate a collection that has the same type constructor as the prefix
