@@ -15,83 +15,63 @@ and far reaching implications.''
 
 Let's see what The Problem is with a small example in a Java-like language. The
 Problem is getting the right amount of context in hot inner loops – which also
-contain a mega-morphic virtual call in the loop and not much else.  Here’s a
-simple loop doing “bitblit”: mashing two rectangles of bits (an image) together
-using some function chosen before the loop, in this case OR’ing two rectangles
-together essentially merging the image.
+contain a mega-morphic virtual call in the loop and not much else.  Here is a
+naive implementation of a ``map'' method that applies a predetermined
+function to all the elements of a source array and assigns the result to a
+destination array. In this case we increment all source's elements by one:
 
-  // The function in the inner loop
-  long or_word( long a, long b ) { return a|b; }
-  // The iterator function
-  void blit( long[] dst, long[] src1, long[] src2 ) {
-    for( int i=0; i<dst.len; i++ )        // simple loop
-      dst[i] = or_word(src1[i],src2[i]);  //   around a simple loop body
-  }
-  
-Inlining the function “or_word” is crucial to performance here.  Without
-inlining the compiler doesn’t know what the loop body does (because function
+// The function in the inner loop
+long add1(long a) {return a + 1;}
+// The iterator function
+void map(long[] dst, long[] src) {
+  for(int i=0; i < dst.len; i++) // simple loop
+    dst[i] = add1(src[i]); // around a simple loop body
+}
+
+Inlining the function ``add1'' is crucial to performance here.  Without
+inlining the compiler does not know what the loop body does (because function
 calls can in general do anything), and with inlining it can understand the
-entire function completely – and then see it’s a simple loop around a stream of
+entire function completely - and then see it’s a simple loop around a stream of
 array references.  At this point the JIT can do range-check elimination, loop
 unrolling, and prefetching, among other optimizations.
 
-The Problem is that there are multiple variations on “or_word” \emph{and}
+The Problem is that there are multiple variations on ``add1'' \emph{and}
 the wrapping iterator gets complex.  It’s the product of these two parts getting
-complicated that makes The Problem.
+complicated that makes The Problem. In this work, we are mostly interested in
+the first part, since the Scala collections iterators are not very big or
+complex.
 
-Suppose the wrapping blit iterator gets complex - it’s walking all the bits in a
-canvas of partially obscured rectangular images, and each image is a collection
-of 24 bits worth of pixels and is possibly boxed or bounded by some other
-rectangles:
-  // A sample complex iterator function
-  void blit( Rectangle bounding_box, Image dst, Image src1, Image src2 ) {
-    for( int i=bounding_box.low; i<bounding_box.high; i++ )
-      for( int j=bounding_box.left; j<bounding_box.right; j++ ) {
-        idx = i*bounding_box.width+j;
-        if( dst.is_rgb_pixels ) {
-          dst.red  [idx] = or_word(src1.red  [idx],src2.red  [idx]);
-          dst.blue [idx] = or_word(src1.blue [idx],src2.blue [idx]);
-          dst.green[idx] = or_word(src1.green[idx],src2.green[idx]);
-        } else if( dst.is_another_kind_of_pixels ) {
-         ....other stuff....
-        }
-      }
-    }
-  }
+More often than not, after implementing map, we would like to add more
+functions similar to add1. We might also want to add ``add2'', ``mult3'',
+``filter'' and so on. What we really want is a way to pass in the function to
+apply on the basic data bits in the innermost loop of our iterator.
+
+In Java we often do this with either a Callable or a Runnable:
+// A sample iterator function
+void map( CallableOneArg fcn1arg, long[] dst, long[] src) {
+  for(int i=0; i < dst.len; i++)
+    dst[i] = fcn1arg.call(src[i]);
+}
   
-Now on top of the complex iterator we want to do something other than
-``or_word''.
-  We might also want to “and_word” (good for masking out images), “xor_word”
-(merging images), “scale_word“,  “filter” and so on.  What we really want is a
-way to pass in the function to apply on the basic data bits in the innermost
-loop of our complicated iterator.  In Java we often do this with either a
-Callable or a Runnable:
-  // A sample complex iterator function
-  void blit( CallableTwoArg fcn2arg, Rectangle bounding_box, Image dst, Image
-src1, Image src2 ) {
-    ...
-      dst[idx] = fcn2arg.call(src1[idx],src2[idx]);
-    ...
-  }
-  
-We need only 1 copy of our large complicated iterator, and we can do all kinds
-of things with Images.  Alas, that inner loop now contains a function call that
-needs inlining and there are dozens of different functions for “fcn2arg.call”. 
-The JIT does not know which one to inline here – because all dozen different
-functions are called at various times.  Typically then the JIT does not inline
+We need only 1 copy of our iterator, and we can apply nearly all kinds of one
+argument functions. Alas, that inner loop now contains a function call that
+needs inlining and there are dozens of different functions for ``fcn1arg.call''.
+The JIT does not know which one to inline here, because all these different
+functions are called at different times.  Typically then the JIT does not inline
 any of them, and instead opts for a virtual call.  While the virtual call
-itself isn’t too bad the lack of knowledge of what goes on inside the virtual
+itself is not too bad, the lack of knowledge of what goes on inside the virtual
 call prevents all kinds of crucial optimizations: loop unrolling, range-check
 elimination, all kinds of prefetching and alias analyses.
 
-One solution  would be to make the inner function call a static (final) call -
-then the JIT can inline. Of course, if we do that we need an iterator for the
-“or_word” version, one for the “and_word” version, and one for the “xor_word”
-version, so we need a lot of them. Also, we will need a new one for each
-new function we can think of; we cannot just name them all up front.  So we will
-end up with a lot of these iterators each with a custom call in the inner loop.
-All these iterators will start blowing out the instruction cache on our CPU, and
-besides it's a pain to maintain dozens of cloned complex iterators.
+One solution  would be to make the inner function call a static (final)
+call, then the JIT can inline. Of course, if we do that we need an iterator for
+the ``add1'' version, one for the ``add2'' version, and one for the
+``mutl3'' version, so we need a lot of them. Also, we will need a new one for
+each new function we can think of; we cannot just name them all up front.  So we
+will end up with a lot of these iterators each with a custom call in the inner
+loop. All these iterators will start blowing out the instruction cache on our
+CPU, and besides it is a pain to maintain dozens of cloned possibly complex
+iterators.
 
 Several Java ecosystem's prominent figures, like Cliff Click, John Rose, Doug
 Lea, have proposed solutions that range from pure obscure technical to pure
@@ -106,7 +86,8 @@ http://www.infoq.com/news/2011/11/yammer-scala}. Most complaints were related
 with The Problem and, more specifically, with the Scala standard
 library collections' performance. In the next chapter we will see where exactly
 the problem lies and how Scala macros can help us alleviate it. Before that, it
-would be helpful to overview the Scala collections and Scala macros.
+would be helpful to overview the Scala language, its collections and its newly
+added macros.
 
 
 Section: Scala Collections Overview
