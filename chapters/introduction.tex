@@ -1,22 +1,6 @@
 This work describes the implementation of specific Scala collections operations
  using its recent compile-time metaprogramming capabilities.
 
-Scala \fxfatal{cite} is a relatively new statically typed programming language
-that tries to unify the object-oriented and functional programming paradigms
-into one coherent paradigm, called object-functional. Currently its main
-implementation runs on the JVM and so its main goal is to provide a more
-general and uniform superset of Java.
-
-Scala version 2.10, released on \fxfatal{date}, introduced a new reflection
-subsystem adding both run time and compile metaprogramming capabilities. The new
-run-time reflection is much more general and feature complete compared to the
-Java's reflection. Compile-time reflection is quite rare and, currently, it can
-be found only in more exotic functional languages like Haskell \fxfatal{cite
-Template Haskell} and ML \fxfatal{cite Meta-ML}. Compile-time reflection enabled
-the introduction of an experimental version of type-safe  macros
-\fxwarning{explain the concept in the background chapter} which are mostly known
-in the dynamic functional programming languages community and especially the
-Lisp community.
 
 In this work, we show that macros can help us create faster collections by
 inlining operations at the call site. The project is based

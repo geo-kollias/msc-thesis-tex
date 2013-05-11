@@ -90,7 +90,17 @@ would be helpful to overview the Scala language, its collections and its newly
 added macros.
 
 
-Section: Scala Collections Overview
+Section: Scala Overview
+
+Scala \fxfatal{cite} is a relatively new statically typed programming language
+that tries to unify the object-oriented and functional programming paradigms
+into one coherent paradigm, recently called object-functional. Currently its
+main implementation runs on the JVM and so its main goal is to provide a more
+general and uniform superset of Java. Since version 2.8, Scala has a rich
+collections library and since version 2.10 it has a completely new reflection
+subsystem.
+
+Subsection: Scala Collections Overview
 
 The Scala library systematically distinguishes between mutable and immutable
 collections. A mutable collection can be updated or extended in place. This
@@ -163,17 +173,29 @@ kind of iterable that has a length method and whose elements have fixed index
 positions, starting from 0.
 
 
-Section: Scala Def Macros
+Subsection: Scala Compile-Time Reflection Overview
 
-Since our implementation uses functionality from the newly introduced Scala
-macros {cite Scala Macros, a Technical Report} let's firstly see the motivation
-for adding macros in a programming language and then a simple real example.
+Scala version 2.10, released on \fxfatal{date}, introduced a new reflection
+subsystem adding both run time and compile metaprogramming capabilities. The new
+run-time reflection is much more general and feature complete compared to the
+Java's reflection. Compile-time reflection is quite rare in the mainstream
+statically typed programming languages and, currently, it can only be found in
+more exotic functional languages like Haskell \fxfatal{cite Template Haskell}
+and ML \fxfatal{cite Meta-ML}. Compile-time reflection enabled the introduction
+of an experimental version of type-safe syntactic macros {cite Scala Macros, a
+Technical Report}. 
 
+Syntactic macro systems work at the level of abstract syntax trees and preserve
+the lexical structure of the original program. Macro systems that work at the
+level of lexical tokens, like the C preprocessor, cannot preserve the
+lexical structure reliably. The most widely used implementations of syntactic
+macro systems are found in Lisp-like languages such as Common Lisp, Scheme,
+ISLISP and Racket [cite each language]. These languages are especially suited
+for this style of macro due to their uniform, parenthesized syntax (known as
+S-expressions).
 
-Subsection: Motivation
-
-Compile-time metaprogramming has been recognized as a valuable tool for enabling
-such programming techniques as:
+Compile-time metaprogramming is a valuable tool for enabling such programming
+techniques as:
 
 - Language virtualization (overloading/overriding semantics of the original
 programming language to enable deep embedding of DSLs),
@@ -183,113 +205,63 @@ program reification),
 - Algorithmic program construction (generation of code that is tedious to write
 with the abstractions supported by a programming language).
 
-A macro system for Scala allows programmers to write macro defs: functions that
+This work falls in the third category, since we use the compile-time reflection
+to optimize the Scala collections.
+
+Scala's macro system allows programmers to write macro defs: functions that
 are transparently loaded by the compiler and executed during compilation. This
-realizes the notion of compile-time metaprogramming for Scala.
+realizes the notion of compile-time metaprogramming for Scala users.
 
-Our project falls in the third category, since we use macros to optimize
-the Scala collections.
+Our project is implemented directly in the Scala compiler (scalac), so we can
+use most of the available compile-time metaprogramming capabilities directly,
+without using macro defs explicitly. In the next chapter we will see how we
+achieve it.
 
+The compile-time reflection allows us to create new and/or manipulate
+existing abstract-syntax trees (ASTs) during compiler's typechecking phase.
+All the new or changed ASTs are re-typechecked guaranteeing us type-safe
+transformations. scalac represents ASTs with objects of type
+scala.reflect.api.Tree or scala.reflect.api.Exprs, which is just a typed-wrapper
+of scala.reflect.api.Tree. Through the available reflection APIs we can create,
+inspect or change compiler's scala.reflect.api.Symbols and
+scala.reflect.api.Types objects that are related with these ASTs.
 
-Subsection: Example
+For example, we can create the AST of the Scala expression ``x < 10'' manually,
+either with a macro or directly within the scalac, with this code
+``Apply(Select(Ident(newTermName("x")), newTermName("\$less"),
+List(Literal(Constant(10)))))''. Apply, Select, Ident, Literal, Constant are AST
+objects themselves of scala.reflect.api.Tree type.
 
-Here is a prototypical macro definition:
+Obviously the AST construction is cumbersome and error-prone. But most probably
+it is also wrong. If the AST was generated within an internal scalac method or
+within a macro, the returned AST will be inlined and type-checked at the
+method/macro call site. But this means that the identifier ``x'' will be
+type-checked at a point where it is most likely not visible, or in the worst
+case they might refer to something else. In the macro literature, this
+insensitivity to bindings is called non-hygienic {cite [19, 8]}. Scala's
+compile-time reflection solves the non-hygiene problem providing a built-in
+macro, called reify, that produces its tree one stage later.
 
-def m(x: T): R = macro implRef
-
-At first glance macro definitions are equivalent to normal function definitions,
-except for their body, which starts with the conditional keyword macro and is
-followed by a possibly qualified identifier that refers to a static macro
-implementation method.
-
-If, during type-checking, the compiler encounters an application of the macro
-m(args), it will expand that application by invoking the corresponding macro
-implementation method, with the abstract-syntax trees (ASTs) of the argument
-expressions, args, as arguments. The result of the macro implementation is
-another AST, which will be inlined at the call site and will be type-checked in
-turn.
-
-The following code snippet declares a macro definition, assert, that references
-a macro implementation Asserts.assertImpl (the definition of assertImpl is
-provided below):
-
-def assert(cond: Boolean, msg: Any) = macro Asserts.assertImpl
-
-A call assert(x < 10, "limit exceeded") would then lead at compile time to an
-invocation
-
-assertImpl(c)(<[ x < 10 ]>, <[ “limit exceeded” ]>)
-
-where c is a context argument that contains information collected by the
-compiler at the call site, and the other two arguments are ASTs representing the
-two expressions x < 10 and limit exceeded.
-
-<[ expr ]> denotes the AST that represents the expression expr. In reality, the
-syntax trees would be constructed from the types in trait
-scala.reflect.api.Trees and the two expressions above would look like this:
-
-Literal(Constant("limit exceeded"))
-Apply(
-  Select(Ident(newTermName("x")), newTermName("\$less"),
-  List(Literal(Constant(10)))))
-  
-Here is a possible implementation of the assert macro:
-
-import scala.reflect.macros.Context
-import scala.language.experimental.macros
-object Asserts {
-  def raise(msg: Any) = throw new AssertionError(msg)
-  def assertImpl(c: Context)
-    (cond: c.Expr[Boolean], msg: c.Expr[Any]) : c.Expr[Unit] =
-   if (assertionsEnabled)
-      c . Expr(If(Select(cond.tree, newTermName("unary_\$bang")),
-Apply(Ident(newTermName("raise")), List(msg.tree)), Literal(Constant(()))))
-}
-
-As the example shows, a macro implementation takes several parameter lists,
-i.e., it's a curried method. First comes a single parameter, of type
-scala.reflect.macros.Context. This is followed by a list of parameters that have
-the same names as the macro definition parameters. But where the original macro
-parameter has type T, a macro implementation parameter has type c.Expr[T], which
-is a path-dependent type and will be explained in the next chapter. Expr[T] is a
-type defined in Context that wraps an AST of type T. The result type of the
-assertImpl macro implementation is again a wrapped tree, of type c.Expr[Unit].
-
-
-Subsection: Hygiene
-
-Obviously the AST construction in the last example of the
-previous section is cumbersome and error-prone. But it is also wrong. The tree
-produced from a macro will be inlined and type-checked at the macro call site.
-But this means that the identifier raise will be type-checked at a point where
-it is most likely not visible, or in the worst case they might refer to
-something else. In the macro literature, this insensitivity to bindings is
-called non-hygienic {cite [19, 8]}.
-
-However, it turns out that macros themselves can be used to solve both these
-problems. A corner-stone of the technique is a macro called reify that produces
-its tree one stage later.
-
-
-Subsection: Reification and Splicing
-
-The reify macro plays a crucial role in the proposed macro system. Its
+The reify macro plays a crucial role in the compile-time metaprogramming. Its
 definition as a member of Context is:
 
-def reify [ T ] ( expr : T) : Expr [ T ] = macro . . .
+def reify[T](expr : T): Expr[T] = macro . . .
 
 Reify accepts a single parameter expr, which can be any well-typed Scala
 expression, and creates a tree that, when compiled and evaluated, will recreate
 the original tree expr. So reify is like time-travel: trees get re-constituted
 at a later stage. If reify is called from normal compiled code, its effect is
 that the AST passed to it will be recreated at run time.
-Consequently, if reify is called from a macro implementation, its effect is that
-the AST passed to it will be recreated at macro-expansion time
-(which corresponds to run time for macros). This gives a convenient way to
-create syntax trees from Scala code: pass the Scala code to reify, and the
-result will be a syntax tree that represents that very same code.
+Consequently, if reify is called from a macro implementation or a method inside
+scalac, its effect is that the AST passed to it will be recreated at
+macro-expansion time (which corresponds to run time for macros). This gives a
+convenient way to create syntax trees from Scala code: pass the Scala code to
+reify, and the result will be a syntax tree that represents that very same code.
 
-Specifically, reify packages the result expression tree with the types and
+For example, ``reify(x < 10)'' will generate an Expr object representing the
+same AST we created manually before.
+
+More importantly, reify packages the result expression tree with the types and
 values of all free references that occur in it. This means in effect that all
 free references in the result are already resolved, so that re-typechecking the
 tree is insensitive to its environment. All identifiers referred to from
@@ -302,21 +274,9 @@ and unhygienic, but that simple form is expressive enough to formulate a
 reify macro, which in turn can be used to make tree construction in macros
 concise and hygienic.
 
-object Asserts {
-  def assertionsEnabled = . . .
-  def raise(msg: Any) = throw new AssertionError(msg)
-  def assertImpl(c : Context)
-    (cond: c.Expr[Boolean], msg: c.Expr[Any])
-    : c.Expr[Unit] = 
-    
-    if(assertionsEnabled)
-      c.reify(if(!cond.splice) raise(msg.splice) )
-    else
-      c.reify(())
-}
+Another important compile-time metaprogramming operation is the ``splicing'',
+which could be described as reify's inverse operation. Using Expr's splice
+method we can inject an existing AST inside a reify's body.
 
-Here, we see that we can use the Expr's splice method inside the reify
-expression in order to inject other trees.
-
-Reification and splicing are crucial to our implementation, which we will see in
-the next chapter.
+Reification and splicing operations are crucial to our implementation, which we
+will see in the next chapter.
