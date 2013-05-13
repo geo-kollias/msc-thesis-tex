@@ -1,97 +1,3 @@
-Section: The Problem
-
-In 'Fixing The Inlining ``Problem''' [cite], Cliff Click describes an issue
-that has emerged the last few years in the JVM ecosystem:
-
-``The Problem is simply this: new languages on the JVM (e.g. JRuby) and new
-programming paradigms (e.g. Fork Join) have exposed a weakness in the current
-crop of inlining heuristics.  Inlining is not happening in a crucial point in
-hot code exposed by these languages, and the lack of inlining is hurting
-performance in a major way.  AND the inlining isn’t happening because The
-Problem is a hard one to solve; (i.e. it’s not the case that we’ll wave our
-wands and do a quick fix & rebuild HotSpot and the problem will go away).   John
-Rose, Doug Lea and I all agree that it's a Major Problem facing JVMs with long
-and far reaching implications.''
-
-Let's see what The Problem is with a small example in a Java-like language. The
-Problem is getting the right amount of context in hot inner loops – which also
-contain a mega-morphic virtual call in the loop and not much else.  Here is a
-naive implementation of a ``map'' method that applies a predetermined
-function to all the elements of a source array and assigns the result to a
-destination array. In this case we increment all source's elements by one:
-
-// The function in the inner loop
-long add1(long a) {return a + 1;}
-// The iterator function
-void map(long[] dst, long[] src) {
-  for(int i=0; i < dst.len; i++) // simple loop
-    dst[i] = add1(src[i]); // around a simple loop body
-}
-
-Inlining the function ``add1'' is crucial to performance here.  Without
-inlining the compiler does not know what the loop body does (because function
-calls can in general do anything), and with inlining it can understand the
-entire function completely - and then see it’s a simple loop around a stream of
-array references.  At this point the JIT can do range-check elimination, loop
-unrolling, and prefetching, among other optimizations.
-
-The Problem is that there are multiple variations on ``add1'' \emph{and}
-the wrapping iterator gets complex.  It’s the product of these two parts getting
-complicated that makes The Problem. In this work, we are mostly interested in
-the first part, since the Scala collections iterators are not very big or
-complex.
-
-More often than not, after implementing map, we would like to add more
-functions similar to add1. We might also want to add ``add2'', ``mult3'',
-``filter'' and so on. What we really want is a way to pass in the function to
-apply on the basic data bits in the innermost loop of our iterator.
-
-In Java we often do this with either a Callable or a Runnable:
-// A sample iterator function
-void map( CallableOneArg fcn1arg, long[] dst, long[] src) {
-  for(int i=0; i < dst.len; i++)
-    dst[i] = fcn1arg.call(src[i]);
-}
-  
-We need only 1 copy of our iterator, and we can apply nearly all kinds of one
-argument functions. Alas, that inner loop now contains a function call that
-needs inlining and there are dozens of different functions for ``fcn1arg.call''.
-The JIT does not know which one to inline here, because all these different
-functions are called at different times.  Typically then the JIT does not inline
-any of them, and instead opts for a virtual call.  While the virtual call
-itself is not too bad, the lack of knowledge of what goes on inside the virtual
-call prevents all kinds of crucial optimizations: loop unrolling, range-check
-elimination, all kinds of prefetching and alias analyses.
-
-One solution  would be to make the inner function call a static (final)
-call, then the JIT can inline. Of course, if we do that we need an iterator for
-the ``add1'' version, one for the ``add2'' version, and one for the
-``mutl3'' version, so we need a lot of them. Also, we will need a new one for
-each new function we can think of; we cannot just name them all up front.  So we
-will end up with a lot of these iterators each with a custom call in the inner
-loop. All these iterators will start blowing out the instruction cache on our
-CPU, and besides it is a pain to maintain dozens of cloned possibly complex
-iterators.
-
-Several Java ecosystem's prominent figures, like Cliff Click, John Rose, Doug
-Lea, have proposed solutions that range from pure obscure technical to pure
-educational ones, demonstrating possible ``megamorphic inlining friendly''
-coding styles.
-
-Scala, as most of the modern JVM languages, is no exception and it suffers from
-The Problem too and, actually, it affects its adoption negatively. At the end of
-2011, an email from a Yammer employee towards TypeSafe's CEO, about Scala
-shortcomings, leaked to the public {cite
-http://www.infoq.com/news/2011/11/yammer-scala}. Most complaints were related
-with The Problem and, more specifically, with the Scala standard
-library collections' performance. In the next chapter we will see where exactly
-the problem lies and how Scala macros can help us alleviate it. Before that, it
-would be helpful to overview the Scala language, its collections and its newly
-added macros.
-
-
-Section: Scala Overview
-
 Scala \fxfatal{cite} is a relatively new statically typed programming language
 that tries to unify the object-oriented and functional programming paradigms
 into one coherent paradigm, recently called object-functional. Currently its
@@ -100,7 +6,7 @@ general and uniform superset of Java. Since version 2.8, Scala has a rich
 collections library and since version 2.10 it has a completely new reflection
 subsystem.
 
-Subsection: Scala Collections Overview
+Section: Scala Collections Overview
 
 The Scala library systematically distinguishes between mutable and immutable
 collections. A mutable collection can be updated or extended in place. This
@@ -173,7 +79,7 @@ kind of iterable that has a length method and whose elements have fixed index
 positions, starting from 0.
 
 
-Subsection: Scala Compile-Time Reflection Overview
+Section: Scala Compile-Time Reflection Overview
 
 Scala version 2.10, released on \fxfatal{date}, introduced a new reflection
 subsystem adding both run time and compile metaprogramming capabilities. The new

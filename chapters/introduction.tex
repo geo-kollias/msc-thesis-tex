@@ -1,18 +1,297 @@
-This work describes the implementation of specific Scala collections operations
- using its recent compile-time metaprogramming capabilities.
+This chapter will introduce our work and the problem it tries to attack. It is a
+real-world hard problem that affects the whole Java Virtual Machine (JVM)
+ecosystem. This work is in no way a complete and sound solution to that
+problem, but it does mitigate many of its implications. In the next chapter, we
+will have an overview of the Scala Collections and Scala's new
+compile-time reflection subsystem in order to prepare us for Chapter X
+where we will explain our project's implementation and core functionality.
+Chapter X provides us with several benchmarks, showing promising performance
+speedups. Chapter X presents some similar work in the area. Finally, Chapter X
+summarizes this work.
+
+Section: The Problem
+
+In 'Fixing The Inlining ``Problem''' [cite], Cliff Click describes an issue
+that has emerged the last few years in the JVM ecosystem:
+
+``The Problem is simply this: new languages on the JVM (e.g. JRuby) and new
+programming paradigms (e.g. Fork Join) have exposed a weakness in the current
+crop of inlining heuristics.  Inlining is not happening in a crucial point in
+hot code exposed by these languages, and the lack of inlining is hurting
+performance in a major way.  AND the inlining isn’t happening because The
+Problem is a hard one to solve; (i.e. it’s not the case that we’ll wave our
+wands and do a quick fix & rebuild HotSpot and the problem will go away).   John
+Rose, Doug Lea and I all agree that it's a Major Problem facing JVMs with long
+and far reaching implications.''
+
+Let's see what The Problem is with a small example in a Java-like language. The
+Problem is getting the right amount of context in hot inner loops – which also
+contain a mega-morphic virtual call in the loop and not much else.  Here is a
+naive implementation of a ``map'' method that applies a predetermined
+function to all the elements of a source array and assigns the result to a
+destination array. In this case we increment all source's elements by one:
+
+// The function in the inner loop
+long add1(long a) {return a + 1;}
+// The iterator function
+void map(long[] dst, long[] src) {
+  for(int i=0; i < dst.len; i++) // simple loop
+    dst[i] = add1(src[i]); // around a simple loop body
+}
+
+Inlining the function ``add1'' is crucial to performance here.  Without
+inlining the compiler does not know what the loop body does (because function
+calls can in general do anything), and with inlining it can understand the
+entire function completely - and then see it’s a simple loop around a stream of
+array references.  At this point the JIT can do range-check elimination, loop
+unrolling, and prefetching, among other optimizations.
+
+The Problem is that there are multiple variations on ``add1'' \emph{and}
+the wrapping iterator gets complex.  It’s the product of these two parts getting
+complicated that makes The Problem. In this work, we are mostly interested in
+the first part, since the Scala collections iterators are not very big or
+complex.
+
+More often than not, after implementing map, we would like to add more
+functions similar to add1. We might also want to add ``add2'', ``mult3'',
+``filter'' and so on. What we really want is a way to pass in the function to
+apply on the basic data bits in the innermost loop of our iterator.
+
+In Java we often do this with either a Callable or a Runnable:
+// A sample iterator function
+void map( CallableOneArg fcn1arg, long[] dst, long[] src) {
+  for(int i=0; i < dst.len; i++)
+    dst[i] = fcn1arg.call(src[i]);
+}
+  
+We need only 1 copy of our iterator, and we can apply nearly all kinds of one
+argument functions. Alas, that inner loop now contains a function call that
+needs inlining and there are dozens of different functions for ``fcn1arg.call''.
+The JIT does not know which one to inline here, because all these different
+functions are called at different times.  Typically then the JIT does not inline
+any of them, and instead opts for a virtual call.  While the virtual call
+itself is not too bad, the lack of knowledge of what goes on inside the virtual
+call prevents all kinds of crucial optimizations: loop unrolling, range-check
+elimination, all kinds of prefetching and alias analyses.
+
+One solution  would be to make the inner function call a static (final)
+call, then the JIT can inline. Of course, if we do that we need an iterator for
+the ``add1'' version, one for the ``add2'' version, and one for the
+``mutl3'' version, so we need a lot of them. Also, we will need a new one for
+each new function we can think of; we cannot just name them all up front.  So we
+will end up with a lot of these iterators each with a custom call in the inner
+loop. All these iterators will start blowing out the instruction cache on our
+CPU, and besides it is a pain to maintain dozens of cloned possibly complex
+iterators.
+
+Several Java ecosystem's prominent figures, like Cliff Click, John Rose, Doug
+Lea, have proposed solutions that range from pure obscure technical to pure
+educational ones, demonstrating possible ``megamorphic inlining friendly''
+coding styles.
+
+Scala, as most of the modern JVM languages, is no exception and it suffers from
+The Problem too and, actually, it affects its adoption negatively. At the end of
+2011, an email from a Yammer employee towards TypeSafe's CEO, about Scala
+shortcomings, leaked to the public {cite
+http://www.infoq.com/news/2011/11/yammer-scala}. Most complaints were related
+with The Problem and, more specifically, with the Scala standard
+library collections' performance. In the next section we will see where exactly
+the problem lies and how ft-declosurify can help us alleviate it.
 
 
-In this work, we show that macros can help us create faster collections by
-inlining operations at the call site. The project is based
-on Paul Phillips's declosurify project (github.com/paulp/declosurify) and
-modifies it to make the functionality available at the standard Scala library
-level, so that all operations implemented with macros can be used on plain Scala
-collection types (e.g., List, Array, etc.) without the need of creating new
-specialized types. Wherever the macro expansion is not feasible or appropriate
-we can fallback to the default ``normal'' implementation. The use of macros
-here is not typical since they are used from inside the Scala Library where no
-macro detection/expansion functionalities are directly available (the Scala
-library doesn't depend on the Scala compiler or Scala reflect packages). The
-results are encouraging since initial ScalaMeter benchmarks show a 30\% speedup.
-You can check the project's progress here github.com/geo-kollias/scala/tree/
-declosurify.
+Section: Our Partial Solution - ft-declosurify
+
+Our project is called ft-declosurify and it is based on Paul Phillips's
+declosurify project {cite}. The ft prefix stands for fast-track and we will
+explain later what it means and how these projects differ.
+
+For understanding at a high-level what ft-declosurify does let's see how
+List(1, 2, 3).map(_ + 1) is translated from both the scalac and
+the ft-declosurify points of view. List(1, 2, 3).map(_ + 1) is a shortcut for
+List(1, 2, 3).map(x => x + 1), where x => x + 1 is an anonymous function
+-closure- that returns its argument incremented by one.
+Applying that function to the List(1, 2, 3) will result in a new list List(2,
+3, 4). Since Scala code is translated into Java bytecode at the end and since
+Java  doesn't support any notion of functions inherently, this anonymous
+function should be translated somehow in constructs that are supported by the
+Java bytecode. The trivial Scala program below:
+
+package src.main.scala
+object ListMapCompilation extends App {
+  def f = List(1, 2, 3).map(_ + 1)
+}
+
+is translated internally by scalac to:
+
+package src.main.scala {
+  object ListMapCompilation extends Object with App {
+    def <init>(): src.main.scala.ListMapCompilation.type = {
+      ListMapCompilation.super.<init>();
+      ()
+    };
+    def f(): List[Int] = immutable.this.List.apply[Int](Array[Int]{1, 2,
+3}).map[Int, List[Int]]({
+      @SerialVersionUID(0) final <synthetic> class $anonfun extends
+scala.runtime.AbstractFunction1[Int,Int] with Serializable {
+        def <init>(): anonymous class $anonfun = {
+          $anonfun.super.<init>();
+          ()
+        };
+        final def apply(x$1: Int): Int = x$1.+(1)
+      };
+      (new anonymous class $anonfun(): Int => Int)
+    }, immutable.this.List.canBuildFrom[Int]())
+  }
+}
+
+The code listing above as well as most of the following listings are slightly
+abbreviated for readability reasons.
+We can see that scalac converts the _ + 1 function into a block of code
+(piece of code between two braces), where a class, called $anonfun, is defined.
+That class extends the AbstractFunction1[Int,Int] class, which is an abstract
+class that represents the functions that take one integer argument and return
+another integer. Inside the class an apply method is defined which is called
+whenever we apply a class object to one integer argument. The apply body
+returns  its argument incremented by one,  e.g., val a1 = new $anonfun();
+a1(5); returns 6. Just after the class definition, scalac creates a new object
+of this class and this is what is actually returned from that block of code.
+Eventually, the _ + 1 is substituted by an object of a subclass of a class
+representing functions internally, which leads us to the conclusion that the
+scala source-level closures are translated to function class objects. Below we
+attach the basic map implementation in the standard Scala library:
+
+def map[B, That](f: A => B)(implicit bf: CanBuildFrom[Repr, B, That]): That =
+{
+    def builder = {
+      val b = bf(repr)
+      b.sizeHint(this)
+      b
+    }
+    val b = builder
+    for (x <- this) b += f(x)
+    b.result
+}
+
+Here f is the function object scalac passed during the map call, i.e., the
+object resulted from new $anonfun() above. f(x) invocation will be expanded to
+f.apply(x) and it is a normal method call on object f. We can easily see
+how similar this map definition is with the one provided in Listing XX.
+They both suffer from The Problem. Here, f's runtime type will, usually, be
+different on each map call since the functions we pass are generally different.
+Such calls are called mega-morphic virtual calls and, currently, are not inlined
+by the JVM as we exlained in the previous chapter. So on each map we generally
+have the added overhead of a dynamic call to the passed function object. Even
+worse, the lack of knowledge of what goes on inside the virtual call prevents
+all kinds of crucial optimizations.
+
+Let's see how ft-declosurify translates a very similar piece of code:
+
+package src.main.scala
+object ListMapCompilation extends App {
+  def f = List(1, 2, 3).macroMap(_ + 1)
+}
+
+The only difference here is the use of macroMap instead of the plain map. It's
+translated into:
+
+[TODO: obsolete example, cbf & builder free method have been added]
+[TODO: integrate builder description to ``ft-declosurify big picture`` section]
+Here we use a scala.collection.mutable.Builder object to construct the target
+collection, which is a Vector too. The builder itself is created from the
+canBuildFrom object the compiler passed in implicitly as we explained
+previously. The builder creation and initialization takes place in the
+builder1 method. While we traverse the prefix, we apply the local function to
+all elements and we append (through method +=) them to the builder. When the
+traversal is over, we call the builder's result method which returns the full
+target collection we want (a Vector in this example).
+package src.main.scala {
+  object ListMapCompilation extends Object with App {
+    def <init>(): src.main.scala.ListMapCompilation.type = {
+      ListMapCompilation.super.<init>();
+      ()
+    };
+    def f(): List[Int] = {
+      private def local1(x$1: Int): Int = x$1.+(1);
+      val buf: scala.collection.mutable.Builder[Int,List[Int]] =
+newBuilder[Int]();
+      var these: List[Int] =
+immutable.this.List.apply[Int](scala.this.Predef.wrapIntArray(Array[Int]{1, 2,
+3}));
+      while(these.isEmpty().unary_!()){
+        buf.+=(local1(these.head()));
+        these = these.tail()
+      };
+      buf.result()
+    }
+  }
+}
+
+Here we see that there is no explicit call to any map method. Instead the
+list's traveral happens directly within a while loop where the local1 local free
+method is applied to all of the list's elements. The local1 method is called a
+free method since it's not directly attached to any class or object.
+During scalac's ``flatten'' phase, it will be lifted and become a method of
+ListMapCompilation with a new mangled name. In particular the code
+above will become:
+
+package src.main.scala {
+  object ListMapCompilation extends Object with App {
+    def f(): List = {
+      val buf: collection.mutable.Builder =
+scala.collection.immutable.List.newBuilder();
+      var these: List =
+immutable.this.List.apply(scala.this.Predef.wrapIntArray(Array[Int]{1, 2, 3}));
+     
+      while(these.isEmpty().unary_!()){
+        buf.+=(scala.Int.box(ListMapCompilation.this.local1\$1(
+scala.Int.unbox(these.head()))));
+        these = these.tail().$asInstanceOf[List]()
+      };
+      buf.result().$asInstanceOf[List]()
+    };
+    final private[this] def local1$1(x$1: Int): Int = x$1.+(1);
+    def <init>(): src.main.scala.ListMapCompilation.type = {
+      ListMapCompilation.super.<init>();
+      ListMapCompilation.this.$asInstanceOf[App$class]()./*App$class*/$init$();
+      ()
+    }
+  }
+}
+
+As we can see now, local1is lifted to local1\$1 and its receiver becomes
+ListMapCompilation which will remain unchanged during the program execution.
+It's much easier for JVM to inline the local1$1 method and reason about further
+optimizations.
+
+We can easily see that ft-declosurify works well for cases where the closure
+is statically available at the call-site like List(1,2,3).macroMap(x => x + 1),
+where it will be expanded to something like
+{
+  ...
+  def local1$1(x$1: Int): Int = x$1.+(1);
+  ...
+} 
+according to the transformations above. This case doesn't solve The Problem
+at its core but, instead, it "sidesteps" it at a "metalinguistic" level, by
+eager compile-time inlining.
+
+A more interesting case is when we have something like List(1, 2,
+3).macroMap(myf), where we don't know much about the myf function except, let's
+say, its type is Int => Int. Then, macroMap will be expanded to something
+like 
+{
+  ...
+ def local1$1(x$1: Int): Int = myf.apply(x$1);
+  ...
+}.
+Initally, it seems that we fall back to The Problem without having any
+advantage. But since all macroMaps will be expanded at the call-site, the myf's
+runtime type will remain the same during each macroMap and, theoretically, the
+type profiler can inline each macroMap's myf.apply -provided that it's less than
+35 bytes-, which again alleviates The Problem.
+
+So in both cases, we do achieve some small wins against The Problem.
+
+Understanding the basics of Scala standard library collections and the newly
+added compile-time reflection subsystem will help us understand ft-declosurify's
+implementation and transformations.
