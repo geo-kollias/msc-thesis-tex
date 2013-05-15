@@ -4,7 +4,7 @@ img_extIsRegExp=false
 img_extensions=.eps .jpg .jpeg .png .pdf .ps .fig .gif
 kileprversion=2
 kileversion=2.1.0
-lastDocument=chapters/benchmarks.tex
+lastDocument=chapters/introduction.tex
 masterDocument=
 name=GKollias_MSc_thesis
 pkg_extIsRegExp=false
@@ -71,37 +71,37 @@ archive=true
 column=7
 encoding=UTF-8
 highlight=LaTeX
-line=0
+line=81
 mode=LaTeX
 open=true
 order=3
 
 [item:chapters/benchmarks.tex]
 archive=true
-column=0
+column=20
 encoding=UTF-8
 highlight=LaTeX
-line=126
+line=52
 mode=LaTeX
 open=true
 order=4
 
 [item:chapters/implementation.tex]
 archive=true
-column=34
+column=45
 encoding=UTF-8
 highlight=LaTeX
-line=494
+line=372
 mode=LaTeX
 open=true
 order=2
 
 [item:chapters/introduction.tex]
 archive=true
-column=19
+column=75
 encoding=UTF-8
 highlight=LaTeX
-line=22
+line=13
 mode=LaTeX
 open=true
 order=0
@@ -128,25 +128,25 @@ order=1
 
 [view-settings,view=0,item:chapters/background.tex]
 CursorColumn=7
-CursorLine=0
+CursorLine=81
 JumpList=
 ViMarks=
 
 [view-settings,view=0,item:chapters/benchmarks.tex]
-CursorColumn=0
-CursorLine=126
+CursorColumn=20
+CursorLine=52
 JumpList=
 ViMarks=
 
 [view-settings,view=0,item:chapters/implementation.tex]
-CursorColumn=34
-CursorLine=494
+CursorColumn=45
+CursorLine=372
 JumpList=
 ViMarks=
 
 [view-settings,view=0,item:chapters/introduction.tex]
-CursorColumn=19
-CursorLine=22
+CursorColumn=75
+CursorLine=13
 JumpList=
 ViMarks=
 
