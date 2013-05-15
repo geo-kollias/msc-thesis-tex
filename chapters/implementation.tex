@@ -198,7 +198,7 @@ Subsection: macroMap/macroForeach definition
 
 The macroForeach method, just like the standard foreach, is meant to traverse
 all elements of the collection, and apply the given operation, f, to each
-element. Theinvocation of f is done for its side effect only; in fact any
+element. The invocation of f is done for its side effect only; in fact any
 function result of f is discarded. Similarly, macroMap, just like the standard
 map, traverses all elements of the collection, and applies the given operation,
 f, to each element but, also, it always returns a collection whose type depends
@@ -218,9 +218,9 @@ Instead of a usual implementation on the right hand side, we see a ???. The ???
 is an actual special Scala method which is used to throw NotImplementedError
 exceptions. Our macroMap implementation will be generated at compile-time, as
 we will explain in the next subsections, so no exception is raised. It's here
-just to prevent syntax erros. 
+just to prevent syntax errors. 
 
-The definition signature is exactly the same as the map one. Regarding the
+The above definition signature is exactly the same as the map one. Regarding
 type parameters, A is the collection's element type and, therefore, f0's
 argument type, B is f0's return type, Repr is the underlying collection's type
 and That is the generated collection's type. Also, as we said, macroMap is a
@@ -248,9 +248,12 @@ library doesn't have access to the new compile-time reflection capabilities
 since it doesn't depend on the scala-reflect and scala-compiler packages, so we
 cannot have macro definitions in it. As a solution, we used the scala compiler's
 FastTrack mechanism defined in the scala.tools.reflect.FastTrack trait.
-Basically, it's a low level mechanism to invoke macro expansions for builtin
-macros. One such builtin macro is the reify function itself that we saw in
-the previous chapter. The FastTrack module uses a registry where one links a
+
+FastTrack is a low level mechanism of scalac to invoke macro
+expansions for builtin macros and it is, also, the key machinery used by our
+implementation in order to register and invoke our transformations. One builtin
+macro that uses this mechanism is the reify function itself that we saw in the
+previous chapter. The FastTrack module uses a registry where one links a
 method's compiler Symbols with special handler methods. For example, whenever
 the compiler sees a Symbol representing an application of reify, it calls its
 respective FastTrack special handler which has access to the reify appication's
@@ -272,11 +275,11 @@ subsection.
 
 Regular Scala macros implementations can be generic in the sense that they can
 be customized with type parameters as any regular Scala method. On top of that,
-Scala compiler allows you to ``tag'' each of these type parameters with special
-compiler-generated objects, of type (Weak)TypeTag [cite], that store the type
-parameters' full types on each call and make them available at runtime. In
-short, it's the Scala's solution against JVM's type erasure. This machinery is
-especially useful for macros, since you can inspect these TypeTag objects and
+the Scala compiler allows us to ``tag'' each of these type parameters with
+special compiler-generated objects, of type (Weak)TypeTag [cite], that store the
+type parameters' full types on each call and make them available at runtime. In
+short, it's Scala's solution against JVM's type erasure. This machinery is
+especially useful for macros, since we can inspect these TypeTag objects and
 generate the most suitable code for each occasion. Unfortunately, using the low
 level compiler's FastTrack mechanism doesn't permit using this facility.
 Instead, we are forced to work directly with the compiler's internal type
@@ -297,8 +300,8 @@ c0.Type, outCollTpe: c0.Type, bfTree: c0.Tree): c0.Tree''. Despite its name,
 mapInfix can generate ASTs for both macroMap and macroForeach. It's a curried
 method parameterized on the received function's input (A) and return (B) types.
 In the first parameter list, c0 is a context object as we described it above,
-giving us access to macro application's call-site information. The most
-important c0's field is the ``prefix'' which represents the receiver collection
+giving us access to the macro application's call-site information. The most
+important field of c0 is the ``prefix'' which represents the receiver collection
 object of the macroMap application. We will call it simply ``prefix''
 from now on. In the second parameter
 list, f0 represents the function's AST which is going to be applied to the
@@ -317,14 +320,14 @@ to return
 
 The last element is the AST of the implicit
 scala.collection.generic.CanBuildFrom [cite adrian moors phd] object that got
-inserted by the compiler at the macroMap call-site. That provides us with an
+inserted by the compiler at the macroMap call-site. This provides us with an
 easy and accurate way to create the appropriate builder for the generated
 collection taking advantage of all the existing implicit CanBuildFrom objects
 that are declared in the standard library.
 
 It's easy to observe that all of second parameter list types are prepended
-with the context object c0. That qualified notation realizes the notion of
-Scala's path-depedent types. For example, here we choose the ``Expr'' that it's
+with the context object c0. This qualified notation realizes the notion of
+Scala's path-depedent types. For example, here we choose the ``Expr'' that is
 defined inside the c0 object. Generally, if we have two different objects c0 and
 c1 of the same type which include an inner type MyType, e.g., through type
 member or inner class,  then c0.MyType is a different type from c1.MyType in
@@ -336,10 +339,9 @@ Subsection: Transformation Requirements
 Knowing what our transformation method can operate upon we can examine the
 main points of the actual transformation. One of the first things ft-declosurify
 checks is if the ``outCollTpe'' is Unit or not (lines XX-YY). If it's Unit then
-it means
-macro is applied only for its side-effects so it's a foreach call. Instead of
-leaning on this heuristic, newer version of the Scala macros provide us with the
-exact name of the calling method.
+it means the macro is applied only for its side-effects so it's a foreach call.
+Instead of relying on this heuristic, newer version of the Scala macros provide
+us with the exact name of the calling method.
 
 After that, we check three conditions to ensure that a typical
 transformation can take place (lines XX-YY):

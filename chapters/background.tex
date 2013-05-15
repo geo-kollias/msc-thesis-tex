@@ -83,11 +83,12 @@ Section: Scala Compile-Time Reflection Overview
 
 Scala version 2.10, released on \fxfatal{date}, introduced a new reflection
 subsystem adding both run time and compile metaprogramming capabilities. The new
-run-time reflection is much more general and feature complete compared to the
-Java's reflection. Compile-time reflection is quite rare in the mainstream
-statically typed programming languages and, currently, it can only be found in
-more exotic functional languages like Haskell \fxfatal{cite Template Haskell}
-and ML \fxfatal{cite Meta-ML}. Compile-time reflection enabled the introduction
+run-time reflection is much more general and feature complete compared to Java's
+reflection. Compile-time reflection is quite rare in mainstream statically typed
+programming languages and, currently, it can only be found in more exotic
+ languages like Haskell \fxfatal{cite Template Haskell}
+and Nemerle \fxfatal{cite Nemerle}. Compile-time reflection enabled the
+introduction
 of an experimental version of type-safe syntactic macros {cite Scala Macros, a
 Technical Report}. 
 
@@ -111,29 +112,30 @@ program reification),
 - Algorithmic program construction (generation of code that is tedious to write
 with the abstractions supported by a programming language).
 
-This work falls in the third category, since we use the compile-time reflection
-to optimize the Scala collections.
+This work falls in categories three and four, since we use compile-time
+reflection to generate code programmatically for each macroMap/macroForeach
+method, specialized at the call-site for optimization reasons.
 
-Scala's macro system allows programmers to write macro defs: functions that
-are transparently loaded by the compiler and executed during compilation. This
-realizes the notion of compile-time metaprogramming for Scala users.
+ Compile-time metaprogramming for Scala users is realized with Scala's new
+macro system that allows programmers to write macro defs: functions that
+are transparently loaded by the compiler and executed during compilation.
 
 Our project is implemented directly in the Scala compiler (scalac), so we can
 use most of the available compile-time metaprogramming capabilities directly,
-without using macro defs explicitly. In the next chapter we will see how we
+without using macro defs explicitly. In the next section we will see how we
 achieve it.
 
-The compile-time reflection allows us to create new and/or manipulate
-existing abstract-syntax trees (ASTs) during compiler's typechecking phase.
-All the new or changed ASTs are re-typechecked guaranteeing us type-safe
+Compile-time reflection allows us to create new and/or manipulate
+existing abstract-syntax trees (ASTs) during the compiler's typechecking phase.
+All the new or changed ASTs are re-typechecked, guaranteeing us type-safe
 transformations. scalac represents ASTs with objects of type
 scala.reflect.api.Tree or scala.reflect.api.Exprs, which is just a typed-wrapper
-of scala.reflect.api.Tree. Through the available reflection APIs we can create,
-inspect or change compiler's scala.reflect.api.Symbols and
+of scala.reflect.api.Tree. Through the available reflection APIs, we can create,
+inspect or change the compiler's scala.reflect.api.Symbols and
 scala.reflect.api.Types objects that are related with these ASTs.
 
 For example, we can create the AST of the Scala expression ``x < 10'' manually,
-either with a macro or directly within the scalac, with this code
+either with a macro or directly within scalac, with this code
 ``Apply(Select(Ident(newTermName("x")), newTermName("\$less"),
 List(Literal(Constant(10)))))''. Apply, Select, Ident, Literal, Constant are AST
 objects themselves of scala.reflect.api.Tree type.
