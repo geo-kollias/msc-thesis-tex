@@ -9,8 +9,9 @@ Section: Benchmarking Configuration
 We used the ScalaMeter [cite] microbenchmarking and performance regression
 testing framework for the JVM platform. We use the same benchmark template for
 all the different categories. The code for the Array benchmarking is at Appendix
-X. In short, these benchmarks compare the macroMap's speed against map's speed
-on different sizes of the same collection.
+X. In short, each benchmark compares the macroMap's speed against map's speed
+on different sizes of the same collection applying the same closure (the
+successor function).
 
 In order to make the benchmarking process more stable, reproducible and reliable
 we have tweaked the benchmark template with the following parameters:
@@ -65,6 +66,40 @@ Parameters(size -> 900000): 13.058838600000001
 Parameters(size -> 1100000): 16.710358120000002
 Parameters(size -> 1300000): 19.27880912
 Parameters(size -> 1500000): 22.4225422
+
+We can see from Figures XX, YY that the average speedup on Arrays is X\% and
+on ArraySeq is X\%.
+
+The speedup on Arrays is impressive and the highest one among all the other
+benchmarked collections. In this series of benchmarks, all collections hold
+integers and the supplied closure returns an integer too (the successor
+integer). Scala language does not have primitive types, but, for optimization
+reasons, it tries to use Java's respective primitive types under the hood
+whenever possible. For example, in our benchmarks, the closure function will
+become a local method like:
+
+def local1$1(x$1: int): int = x$1.+(1);
+
+This method deals solely with Java's primitive integers under the hood. On the
+other hand operations on ArraySeq, List and most of the collections except
+Array, deal with scala.Int, which is Scala's boxed integer type, somewhat
+similar to Java's Integer type. So, for example, in an ArraySeq transformation
+the target collection in constructed like this:
+
+buf.update(i, scala.Int.box(local1$1(scala.Int.unbox(xs.apply(i))
+
+while on Arrays we have:
+
+buf.update(i, local1$1(xs.apply(i)))
+
+This is due the way Arrays are constructed. In particular, when we ask for an
+Array[scala.Int] in Scala, the compiler inspects it and creates an
+Array[int] automatically and, as a consequence, all of its methods accept or
+return primitive integers. We can see that avoiding the boxing/unboxing
+operations can give us a huge performance boost. For that reason, Scala already
+provides the @specialized annotation [cite] for creating specialized
+classes/collections and, more generally, specialization is a hot research topic
+in the Scala ecosystem [cite miniboxing & I.Dragos' PhD].
 
 
 Subsection: scala.collection.LinearSeq Benchmarks
