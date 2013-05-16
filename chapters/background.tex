@@ -116,9 +116,9 @@ This work falls in categories three and four, since we use compile-time
 reflection to generate code programmatically for each macroMap/macroForeach
 method, specialized at the call-site for optimization reasons.
 
- Compile-time metaprogramming for Scala users is realized with Scala's new
-macro system that allows programmers to write macro defs: functions that
-are transparently loaded by the compiler and executed during compilation.
+ Scala's compile-time metaprogramming can be used through Scala's new macro
+system that allows programmers to write macro defs: functions that are
+transparently loaded by the compiler and executed during compilation.
 
 Our project is implemented directly in the Scala compiler (scalac), so we can
 use most of the available compile-time metaprogramming capabilities directly,

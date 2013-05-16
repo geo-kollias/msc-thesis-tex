@@ -78,10 +78,10 @@ how similar this map definition is with the one provided in Listing XX.
 They both suffer from The Problem. Here, f's runtime type will, usually, be
 different on each map call since the functions we pass are generally different.
 Such calls are called mega-morphic virtual calls and, currently, are not inlined
-by the JVM as we exlained in the previous chapter. So on each map we generally
-have the added overhead of a dynamic call to the passed function object. Even
-worse, the lack of knowledge of what goes on inside the virtual call prevents
-all kinds of crucial optimizations.
+by the JVM as we exlained in the introduction. So on each map we
+generally have the added overhead of a dynamic call to the passed function
+object. Even worse, the lack of knowledge of what goes on inside the virtual
+call prevents all kinds of crucial optimizations.
 
 Let's see how ft-declosurify translates a very similar piece of code:
 
