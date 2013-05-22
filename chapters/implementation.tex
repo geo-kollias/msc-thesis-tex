@@ -267,7 +267,7 @@ Pattern matching happens upon these ASTs so, theoretically, we can choose to
 match successfully against ``List(1,2,3).macroMap(_ + 1)'' but not against ``val
 r = List(1,2,3); r.macroMap(_ + 1)'' depending on our needs. If the pattern
 matching is successful, its respective compiler handler will eventually generate
-the AST which replaces the macro application's AST in the call-site, completing
+the AST which replaces the macro application's AST at the call-site, completing
 that way the low-level macro expansion. In our case, whenever scalac finds a
 Symbol of an application of the scala.collection.TraversableLike trait's
 macroMap method, it triggers the expansion we will describe in the next
@@ -286,7 +286,7 @@ Instead, we are forced to work directly with the compiler's internal type
 representations lowering the level of abstraction we can work with.
 
 FastTrack's special handler for the macroMap method, after
-doing some preprocessing on the pattern matched ASTs, will call the metod
+doing some preprocessing on the pattern matched ASTs, will call the method
 that does the actual transformation we saw in the previous subsection. 
 
 
@@ -362,17 +362,13 @@ into a local free method AST (lines XX-YY). For example, the passed closure ``x
 closure like ``x => x + y'' where y is defined in the local scope would be
 transformed to something like ``def local1(x: Int): Int =
 x.+(TestMacroMapObject.this.y)''. Also, a closure like ``{println(''hi``); x =>
-x + 1}'' would be transformed to ``def local1(x: Int): Int = {println(''hi``);
-x.+(1)}'
+x + 1}'' would be transformed to ``println(''hi``); def local1(x: Int): Int =
+x.+(1)''
 
 Subsection: Transformation Choice and Pattern
 
-The transformation choice depends upon both the prefix's type and  the
-target collection the CanBuildFrom object has decided to create, which depends
-itself on which implicit collections' CanBuildFrom object has been passed to
-macroMap from the Scala compiler in an earlier phase.
-
-Right now, there are four different transformation paths for different kinds of
+The transformation choice depends primarily upon the prefix's type. Right now,
+there are three different transformation paths for different kinds of
 prefixes. We will check them in the following subsections but all of them are
 based on the same core transformation pattern. In pseudocode that structure
 could be described as:
@@ -444,7 +440,7 @@ any macroMap applications on Arrays like:
 
 Array(1, 2, 3).macroMap(_ + 1)
 
-will be replaced from:
+will expand to:
 
 {
   def local1(x$1: Int): Int = x$1.+(1);
@@ -466,7 +462,7 @@ category are:
 - the length method here takes constant time
 - the element selection through xs.apply(i) takes constant time
 - the update method is supported, since all collections of this category are
-mutable
+mutable, and takes constant time
 
 Also, all of this category's collections can only be mutated through the
 update method (the assignment operator) on a specific index, with one
@@ -535,7 +531,7 @@ example, any macroMap applications on scala.collection.immutable.Set like:
 
 Set(1, 2, 3).macroMap(_ + 1)
 
-will be replaced from:
+will expand to:
 
 {
   private def local1(x$1: Int): Int = x$1.+(1);
@@ -557,7 +553,7 @@ immutable.this.Set.canBuildFrom[Int].apply();
 
 
 Here, we use the iterator method to generate a prefix's iterator object. All
-collections have an iterator method since all of them implement the
+collections have an toIterator method since all of them implement the
 scala.collection.Iterable trait. Each collection implements it using its
 scala.collection.Traversable's foreach method, which is implemented according to
 each collection's special characteristics in order to be more efficient.

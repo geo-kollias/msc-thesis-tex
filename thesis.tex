@@ -98,6 +98,29 @@ escapechar={\%},
 }
 
 
+% \lstnewenvironment{javaCode}{
+% \lstset{ %
+%   language=Java,         % the language of the code
+%   style=numbers,
+%   title=\lstname,        % show the filename of files included with \lstinputlisting;
+%                          % also try caption instead of title
+%   classoffset=0,
+%   deletekeywords={void, boolean, byte, char, short, int, long, float, double},
+%   keywordstyle=\color{blue}\bfseries,      % keyword style
+%   classoffset=1,
+%   morekeywords={void, boolean, byte, char, short, int, long, float, double},
+%   keywordstyle=\color{Mahogany}\bfseries,  % primitive style
+%   classoffset=0,
+%   commentstyle=\color{Orange},             % comment styles
+%   morecomment=[l][\color{Orange}]{//},
+%   morecomment=[l][\color{red}]{//!},
+%   morecomment=[s][\color{Orange}]{/*}{*/},
+%   morecomment=[s][\color{Orchid}]{/**}{*/},
+%   stringstyle=\color{dkgreen},             % string literal style
+%   escapeinside={\%*}{*)}                  % if you want to add a comment within your code
+% }
+% }{}
+
 \lstnewenvironment{javaCode}{
 \lstset{ %
   language=Java,         % the language of the code
@@ -106,18 +129,57 @@ escapechar={\%},
                          % also try caption instead of title
   classoffset=0,
   deletekeywords={void, boolean, byte, char, short, int, long, float, double},
-  keywordstyle=\color{blue}\bfseries,      % keyword style
+  keywordstyle=\bfseries,      % keyword style
   classoffset=1,
   morekeywords={void, boolean, byte, char, short, int, long, float, double},
-  keywordstyle=\color{Mahogany}\bfseries,  % primitive style
+  keywordstyle=\bfseries,  % primitive style
   classoffset=0,
-  commentstyle=\color{Orange},             % comment styles
-  morecomment=[l][\color{Orange}]{//},
-  morecomment=[l][\color{red}]{//!},
-  morecomment=[s][\color{Orange}]{/*}{*/},
-  morecomment=[s][\color{Orchid}]{/**}{*/},
+  commentstyle=\itshape,             % comment styles
+  morecomment=[l]{//},
+  morecomment=[l]{//!},
+  morecomment=[s]{/*}{*/},
+  morecomment=[s]{/**}{*/},
   stringstyle=\color{dkgreen},             % string literal style
   escapeinside={\%*}{*)}                  % if you want to add a comment within your code
+}
+}{}
+
+% scala language description
+\lstdefinelanguage{Scala}{
+    morekeywords={%
+        abstract,case,catch,class,def,do,else,extends,%
+        false,final,finally,for,forSome,if,implicit,import,lazy,%
+        match,new,null,object,override,package,private,protected,%
+        return,sealed,super,this,throw,trait,true,try,type,%
+        val,var,while,with,yield},%
+    sensitive,%
+    morecomment=[l]//,%
+    morecomment=[s]{/*}{*/},%
+}[keywords,comments]%
+
+\lstnewenvironment{scalaCode}{
+% activate the language and predefine settings
+\lstset{
+    language=Scala,%
+    style=numbers,
+%     xleftmargin=4mm,%
+%     aboveskip=3mm,%
+%     belowskip=3mm,%
+%     fontadjust=true,%
+%     columns=[c]fixed,%
+%     keepspaces=true,%
+%     basewidth={0.58em, 0.53em},%
+    tabsize=2,%
+%     basicstyle=\renewcommand{\baselinestretch}{0.95}\ttfamily,%
+    commentstyle=\itshape,%
+    keywordstyle=\bfseries,%
+%     mathescape=true,%
+%     escapechar=?,%
+%     captionpos=b,%
+%     framerule=0.3pt,%
+%     firstnumber=0,%
+%     numbersep=1.5mm,%
+%     numberstyle=\tiny,%
 }
 }{}
 
