@@ -78,10 +78,9 @@ Syntactic macro systems work at the level of abstract syntax trees and preserve
 the lexical structure of the original program. Macro systems that work at the
 level of lexical tokens, like the C preprocessor, cannot preserve the
 lexical structure reliably. The most widely used implementations of syntactic
-macro systems are found in Lisp-like languages such as Common Lisp, Scheme,
-ISLISP and Racket \fxfatal{cite each language}. These languages are especially suited
-for this style of macro due to their uniform, parenthesized syntax (known as
-S-expressions).
+macro systems are found in Lisp-like languages such as Common Lisp, Scheme. 
+These languages are especially suited for this style of macro due to their uniform,
+parenthesized syntax (known as S-expressions).
 
 Compile-time metaprogramming is a valuable tool for enabling such programming
 techniques as:
@@ -134,7 +133,7 @@ within a macro, the returned AST will be inlined and type-checked at the
 method/macro call site. But this means that the identifier \texttt{x} will be
 type-checked at a point where it is most likely not visible, or in the worst
 case they might refer to something else. In the macro literature, this
-insensitivity to bindings is called non-hygienic \fxfatal{cite [19, 8]}. Scala's
+insensitivity to bindings is called non-hygienic \fxfatal{cite 19, 8}. Scala's
 compile-time reflection solves the non-hygiene problem providing a built-in
 macro, called \texttt{reify}, that produces its tree one stage later.
 
@@ -176,5 +175,5 @@ Another important compile-time metaprogramming operation is the \emph{splicing},
 which could be described as \texttt{reify}'s inverse operation. Using \texttt{Expr}'s splice
 method we can inject an existing AST inside a \texttt{reify}'s body.
 
-Reification and splicing operations are crucial to our implementation, which we
+Reification and splicing operations are crucial to our implementation, as we
 will see in the next chapter.

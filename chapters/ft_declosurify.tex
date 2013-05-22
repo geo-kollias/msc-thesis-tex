@@ -1,64 +1,56 @@
-This chapter presents the core of our work. Section XX will give us a
-thorough overview of ft-declosurify and section XX will describe the major
-ft-declosurify implementation details.
+This chapter presents the core of our work. Section~\ref{ft_declosurify_overview} will give us a
+thorough overview of \textsc{ft-declosurify} and section~\ref{ft_declosurify_impl} will describe the major
+\textsc{ft-declosurify} implementation details.
 
-Section: ft-declosurify Overview
+\section{\textsc{ft-declosurify} Overview}
+\label{ft_declosurify_overview}
 
-For understanding at a high-level what ft-declosurify does let's see how an
-example expression List(1, 2, 3).map(_ + 1) is translated from both the scalac
-and the ft-declosurify points of view. List(1, 2, 3).map(_ + 1) is a shortcut
-for List(1, 2, 3).map(x => x + 1), where x => x + 1 is an anonymous function
+For understanding at a high-level what \textsc{ft-declosurify} does let's see how an
+example expression \sv{List(1, 2, 3).map(\_ + 1)} is translated from both the scalac
+and the \textsc{ft-declosurify} points of view. \sv{List(1, 2, 3).map(\_ + 1)} is a shortcut
+for \sv{List(1, 2, 3).map(x => x + 1)}, where \sv{x => x + 1} is an anonymous function
 -closure- that returns its argument incremented by one.
-Applying that function to the List(1, 2, 3) will result in a new list List(2,
-3, 4). Since Scala code is translated into Java bytecode at the end and since
+Applying that function to the \sv{List(1, 2, 3)} will result in a new list \sv{List(2, 3, 4)}. 
+Since Scala code is translated into Java bytecode at the end and since
 Java  doesn't support any notion of functions inherently, this anonymous
 function should be translated somehow in constructs that are supported by the
-Java bytecode. The trivial Scala program below:
+Java bytecode. This trivial Scala expression \sv{List(1, 2, 3).map(\_ + 1)} is translated internally 
+by scalac to: \footnote{The code listing below as well as most of the following listings are slightly
+abbreviated for readability reasons}
 
-package src.main.scala
-object ListMapCompilation extends App {
-  def f = List(1, 2, 3).map(_ + 1)
-}
-
-is translated internally by scalac to:
-
-package src.main.scala {
-  object ListMapCompilation extends Object with App {
-    def <init>(): src.main.scala.ListMapCompilation.type = {
-      ListMapCompilation.super.<init>();
-      ()
-    };
-    def f(): List[Int] = immutable.this.List.apply[Int](Array[Int]{1, 2,
-3}).map[Int, List[Int]]({
-      @SerialVersionUID(0) final <synthetic> class $anonfun extends
-scala.runtime.AbstractFunction1[Int,Int] with Serializable {
+\begin{figure}
+\begin{scalaCode}
+immutable.this.List.apply[Int](Array[Int]{1, 2, 3}).map[Int, List[Int]]({
+      final class $anonfun extends scala.runtime.AbstractFunction1[Int,Int] with Serializable {
         def <init>(): anonymous class $anonfun = {
           $anonfun.super.<init>();
           ()
         };
         final def apply(x$1: Int): Int = x$1.+(1)
       };
-      (new anonymous class $anonfun(): Int => Int)
+      (new $anonfun(): Int => Int)
     }, immutable.this.List.canBuildFrom[Int]())
-  }
-}
+\end{scalaCode}
+\caption[scalac's internal representation of \sv{List(1, 2, 3).map(\_ + 1)}]{scalac's internal representation of \sv{List(1, 2, 3).map(\_ + 1)}}
+\label{scalac_map_internal_repr}
+\end{figure}
 
-The code listing above as well as most of the following listings are slightly
-abbreviated for readability reasons.
-We can see that scalac converts the _ + 1 function into a block of code
-(piece of code between two braces), where a class, called $anonfun, is defined.
-That class extends the AbstractFunction1[Int,Int] class, which is an abstract
+We can see that scalac converts the \sv{\_ + 1} function into a block of code
+(piece of code between two braces), where a class, called \texttt{\$anonfun}, is defined.
+That class extends the \sv{AbstractFunction1[Int,Int]} class, which is an abstract
 class that represents the functions that take one integer argument and return
-another integer. Inside the class an apply method is defined which is called
-whenever we apply a class object to one integer argument. The apply body
-returns  its argument incremented by one,  e.g., val a1 = new $anonfun();
-a1(5); returns 6. Just after the class definition, scalac creates a new object
+another integer. Inside the class an \texttt{apply} method is defined which is called
+whenever we apply a class object to one integer argument. The \texttt{apply} body
+returns  its argument incremented by one,  e.g., \sv{val a1 = new \$anonfun();
+a1(5);} returns $6$. Just after the class definition, scalac creates a new object
 of this class and this is what is actually returned from that block of code.
-Eventually, the _ + 1 is substituted by an object of a subclass of a class
+Eventually, the \sv{\_ + 1} is substituted by an object of a subclass of a class
 representing functions internally, which leads us to the conclusion that the
 scala source-level closures are translated to function class objects. Below we
-attach the basic map implementation in the standard Scala library:
+attach the standard Scala library's basic \texttt{map} implementation:
 
+\begin{figure}
+\begin{scalaCode}
 def map[B, That](f: A => B)(implicit bf: CanBuildFrom[Repr, B, That]): That =
 {
     def builder = {
@@ -70,160 +62,142 @@ def map[B, That](f: A => B)(implicit bf: CanBuildFrom[Repr, B, That]): That =
     for (x <- this) b += f(x)
     b.result
 }
+\end{scalaCode}
+\caption[Scala's default \texttt{map} implementation]{Scala's default \texttt{map} implementation}
+\label{scala_map}
+\end{figure}
 
-Here f is the function object scalac passed during the map call, i.e., the
-object resulted from new $anonfun() above. f(x) invocation will be expanded to
-f.apply(x) and it is a normal method call on object f. We can easily see
-how similar this map definition is with the one provided in Listing XX.
-They both suffer from The Problem. Here, f's runtime type will, usually, be
-different on each map call since the functions we pass are generally different.
-Such calls are called mega-morphic virtual calls and, currently, are not inlined
-by the JVM as we exlained in the introduction. So on each map we
+Here f is the function object scalac passed during the \texttt{map} call, i.e., the
+object resulted from \sv{new \$anonfun()} call in Figure~\ref{scalac_map_internal_repr}. 
+\texttt{f(x)} invocation will be expanded to
+\sv{f.apply(x)} and, therefore, it is a normal method call on object \texttt{f}. We can easily see
+how similar this \texttt{map} definition is with the one provided in Figure~\ref{java_generic_map}.
+They both suffer from The Problem. Here, \texttt{f}'s runtime type will, usually, be
+different on each \texttt{map} call since the functions we pass are generally different.
+Such calls are called mega-morphic virtual calls and, currently, cannot be inlined
+by the JVM as we exlained in the introduction. So on each \texttt{map} we
 generally have the added overhead of a dynamic call to the passed function
 object. Even worse, the lack of knowledge of what goes on inside the virtual
 call prevents all kinds of crucial optimizations.
 
-Let's see how ft-declosurify translates a very similar piece of code:
+Let's see how \textsc{ft-declosurify} translates the repsective piece of code
+\sv{List(1, 2, 3).macroMap(\_ + 1)}. The only difference here is the use of \texttt{macroMap} instead
+of the plain \texttt{map}. It's transformed into:
 
-package src.main.scala
-object ListMapCompilation extends App {
-  def f = List(1, 2, 3).macroMap(_ + 1)
-}
-
-The only difference here is the use of macroMap instead of the plain map. It's
-translated into:
-
-[TODO: obsolete example, cbf & builder free method have been added]
-[TODO: integrate builder description to ``ft-declosurify big picture`` section]
-Here we use a scala.collection.mutable.Builder object to construct the target
-collection, which is a Vector too. The builder itself is created from the
-canBuildFrom object the compiler passed in implicitly as we explained
-previously. The builder creation and initialization takes place in the
-builder1 method. While we traverse the prefix, we apply the local function to
-all elements and we append (through method +=) them to the builder. When the
-traversal is over, we call the builder's result method which returns the full
-target collection we want (a Vector in this example).
-package src.main.scala {
-  object ListMapCompilation extends Object with App {
-    def <init>(): src.main.scala.ListMapCompilation.type = {
-      ListMapCompilation.super.<init>();
-      ()
-    };
-    def f(): List[Int] = {
-      private def local1(x$1: Int): Int = x$1.+(1);
-      val buf: scala.collection.mutable.Builder[Int,List[Int]] =
-newBuilder[Int]();
-      var these: List[Int] =
-immutable.this.List.apply[Int](scala.this.Predef.wrapIntArray(Array[Int]{1, 2,
-3}));
-      while(these.isEmpty().unary_!()){
-        buf.+=(local1(these.head()));
-        these = these.tail()
-      };
-      buf.result()
-    }
-  }
-}
-
-Here we see that there is no explicit call to any map method. Instead the
-list's traveral happens directly within a while loop where the local1 local free
-method is applied to all of the list's elements. The local1 method is called a
-free method since it's not directly attached to any class or object.
-During scalac's ``flatten'' phase, it will be lifted and become a method of
-ListMapCompilation with a new mangled name. In particular the code
-above will become:
-
-package src.main.scala {
-  object ListMapCompilation extends Object with App {
-    def f(): List = {
-      val buf: collection.mutable.Builder =
-scala.collection.immutable.List.newBuilder();
-      var these: List =
-immutable.this.List.apply(scala.this.Predef.wrapIntArray(Array[Int]{1, 2, 3}));
-     
-      while(these.isEmpty().unary_!()){
-        buf.+=(scala.Int.box(ListMapCompilation.this.local1\$1(
-scala.Int.unbox(these.head()))));
-        these = these.tail().$asInstanceOf[List]()
-      };
-      buf.result().$asInstanceOf[List]()
-    };
-    final private[this] def local1$1(x$1: Int): Int = x$1.+(1);
-    def <init>(): src.main.scala.ListMapCompilation.type = {
-      ListMapCompilation.super.<init>();
-      ListMapCompilation.this.$asInstanceOf[App$class]()./*App$class*/$init$();
-      ()
-    }
-  }
-}
-
-As we can see now, local1is lifted to local1\$1 and its receiver becomes
-ListMapCompilation which will remain unchanged during the program execution.
-It's much easier for JVM to inline the local1$1 method and reason about further
-optimizations.
-
-We can easily see that ft-declosurify works well for cases where the closure
-is statically available at the call-site like List(1,2,3).macroMap(x => x + 1),
-where it will be expanded to something like
+\begin{figure}
+\begin{scalaCode}
 {
+  private def local1(x\$1: Int): Int = x\$1.+(1);
+  private def builder1: scala.collection.mutable.Builder[Int,List[Int]] = {
+    val b: scala.collection.mutable.Builder[Int,List[Int]] =
+immutable.this.List.canBuildFrom[Int].apply();
+    b.sizeHint(immutable.this.List.apply[Int](1, 2, 3));
+    b
+  };
+  val buf = builder1();
+  var these = immutable.this.List.apply[Int](1, 2, 3);
+  while(!these.isEmpty){
+    buf.+=(local1(these.head));
+    these = these.tail
+  };
+  buf.result
+}
+\end{scalaCode}
+\caption[\sv{List(1, 2, 3).macroMap(\_ + 1)} example transformation]{\sv{List(1, 2, 3).macroMap(\_ + 1)} example transformation}
+\end{figure}
+
+Here we use a scala.collection.mutable.Builder object to construct the target
+collection. The builder itself is created from the
+canBuildFrom object the compiler passed in implicitly, as we will explain more thoroughly in section~\ref{ft_declosurify_impl}. 
+The builder creation and initialization takes place in the
+builder1 method. While we traverse the prefix, we apply the \texttt{local1} function to
+all elements and we append (through method \texttt{+=}) them to the builder. When the
+traversal is over, we call the builder's result method which returns the full
+target collection we want (a List in this example).
+
+In \texttt{macroMap}'s transformation, we see that there is no explicit call to any 
+\texttt{map} method. Instead, the list's traveral happens directly within a while loop 
+where the \texttt{local1} local free method is applied to all of the list's elements. 
+The local1 method is called a free method since it's not directly attached to any class or object.
+During scalac's ``flatten'' phase, it will be lifted and become a method of
+the enclosing class with a new mangled name. That way \texttt{local1}'s receiver runtime type
+will, likely ,remain unchanged during a program's execution. Therefore, it's much easier for JVM
+to \texttt{inline} \texttt{local1} and reason about further optimizations.
+
+We can easily see that \textsc{ft-declosurify} works well for cases where the closure
+is statically available at the call-site, like \sv{List(1,2,3).macroMap(x => x + 1)},
+where it will be expanded to something like
+
+\begin{scalaCode}
+{
+  def local1(x\$1: Int): Int = x\$1.+(1);
   ...
-  def local1$1(x$1: Int): Int = x$1.+(1);
-  ...
-} 
+}
+\end{scalaCode}
+
 according to the transformations above. This case doesn't solve The Problem
 at its core but, instead, it "sidesteps" it at a "metalinguistic" level, by
-eager compile-time inlining.
+eager compile-time inlining and by transforming the passed function
+object to a local method.
 
-A more interesting case is when we have something like List(1, 2,
-3).macroMap(myf), where we don't know much about the myf function except, let's
-say, its type is Int => Int. Then, macroMap will be expanded to something
-like 
+A more interesting case is when we have something like \sv{List(1, 2,
+3).macroMap(myf)}, where we don't know much about the myf function except, let's
+say, its type is \sv{Int => Int}. Then, \texttt{macroMap} will be expanded to something
+like:
+
+\begin{scalaCode}
 {
+ def local1(x\$1: Int): Int = myf.apply(x\$1);
   ...
- def local1$1(x$1: Int): Int = myf.apply(x$1);
-  ...
-}.
+}
+\end{scalaCode}
+
 Initally, it seems that we fall back to The Problem without having any
-advantage. But since all macroMaps will be expanded at the call-site, myf's
-runtime type will remain the same during each macroMap call and, theoretically,
-the type profiler can inline each macroMap's myf.apply -provided that it's less
-than 35 bytes-, which again alleviates The Problem.
+advantage, since \sv{myf.apply} seems to be a megamorphic virtual call again.
+But, in a program, all \texttt{macroMap} instances will be expanded at the call-site and their myf's
+runtime type will, usually, remain the same during each call and, theoretically,
+the type profiler can inline each \sv{myf.apply}, which again alleviates 
+The Problem. So, in both cases, we do achieve some wins against The Problem.
 
-So in both cases, we do achieve some wins against The Problem.
+In summary, \texttt{macroMap} transformation takes advantage of:
+\begin{itemize}
+ \item Knowing the static type of \texttt{macroMap}'s receiver, because it can apply different transformations depending on the type.
+  \item Knowing the static type of the \texttt{macroMap}'s function, because it can transform it in a local method and, making it inlining friendly.
+  \item Having a fixed built-in implementation, applying eager compile-time inlining.
+\end{itemize}
 
 
-Section: ft-declosurify Implementation Specifics
+\section{\textsc{ft-declosurify} Implementation Specifics}
+\label{ft_declosurify_impl}
 
-Subsection: macroMap/macroForeach definition
-
-The macroForeach method, just like the standard foreach, is meant to traverse
+The \texttt{macroForeach} method, just like the standard \texttt{foreach}, is meant to traverse
 all elements of the collection, and apply the given operation, f, to each
 element. The invocation of f is done for its side effect only; in fact any
-function result of f is discarded. Similarly, macroMap, just like the standard
-map, traverses all elements of the collection, and applies the given operation,
+function result of f is discarded. Similarly, \texttt{macroMap}, just like the standard
+\texttt{map}, traverses all elements of the collection, and applies the given operation,
 f, to each element but, also, it always returns a collection whose type depends
-on f. We could see macroMap's functionality as a superset of macroForeach's
+on f. We could see \texttt{macroMap}'s functionality as a superset of \texttt{macroForeach}'s
 functionality and that's true on the implementation side too. The same code
-handles both cases but, in the case of macroForeach, we ignore the result. For
+handles both cases but, in the case of \texttt{macroForeach}, we ignore the result. For
 that reason and without any loss of generality we will be referring only to
-macroMap in the rest of the text.
+\texttt{macroMap} in the rest of the text.
 
-macroMap is defined in scala.collection.TraversableLike trait, where the
-standard library's map method is defined too. Its definition is an unusual one:
+\texttt{macroMap} is defined in scala.collection.TraversableLike trait, where the
+standard library's \texttt{map} method is defined too. Its definition is an unusual one:
 
 ``def macroMap[B, That](f0: A => B)(implicit bf: CanBuildFrom[Repr, B, That]):
 That = ???''
 
 Instead of a usual implementation on the right hand side, we see a ???. The ???
 is an actual special Scala method which is used to throw NotImplementedError
-exceptions. Our macroMap implementation will be generated at compile-time, as
+exceptions. Our \texttt{macroMap} implementation will be generated at compile-time, as
 we will explain in the next subsections, so no exception is raised. It's here
 just to prevent syntax errors. 
 
-The above definition signature is exactly the same as the map one. Regarding
+The above signature is exactly the same as the \texttt{map}'s one. Regarding
 type parameters, A is the collection's element type and, therefore, f0's
 argument type, B is f0's return type, Repr is the underlying collection's type
-and That is the generated collection's type. Also, as we said, macroMap is a
+and That is the generated collection's type. Also, as we said, \texttt{macroMap} is a
 curried method. The first parameter list accepts the operation's function. The
 second parameter gets an implicit CanBuildFrom object. CanBuildFrom objects are
 builder factories which generate the appropriate
@@ -235,15 +209,15 @@ create an Array of integers out of a List of strings. Since bf is implicit, it
 will usually be generated and passed by the compiler automatically.
 
 
-Subsection: ft-declosurify in the Scala standard library
+Subsection: \textsc{ft-declosurify} in the Scala standard library
 
 The upstream declosurify project can be used as a library adding the -extension-
-methods macroMap and macroForeach on all Scala collections that implement the
+methods \texttt{macroMap} and \texttt{macroForeach} on all Scala collections that implement the
 scala.collection.TraversableOnce trait and Arrays, through Scala's implicit
 conversions {cite implicit conversions}. Since, ultimately, we would like to
-substitute the default map and foreach methods with the macroMap and
-macroForeach implementations, respectively, we had to move the definitions
-of macroMap, macroForeach inside the Scala standard library. The Scala standard
+substitute the default \texttt{map} and \texttt{foreach} methods with the \texttt{macroMap} and
+\texttt{macroForeach} implementations, respectively, we had to move the definitions
+of \texttt{macroMap}, \texttt{macroForeach} inside the Scala standard library. The Scala standard
 library doesn't have access to the new compile-time reflection capabilities
 since it doesn't depend on the scala-reflect and scala-compiler packages, so we
 cannot have macro definitions in it. As a solution, we used the scala compiler's
@@ -261,16 +235,16 @@ call-site context and all of  its arguments' Abstract Syntax Trees (ASTs),
 through pattern matching. The call-site context object, generally, holds
 call-site information like the macro application's enclosing method, its
 enclosing class, its line in the file. The ASTs contain the internal
-representation of the macro application like ``List(1, 2, 3).macroMap(_ + 1)''
-i.e., the receiver object, the macroMap method call and its function argument.
+representation of the macro application like ``List(1, 2, 3).macroMap(\_ + 1)''
+i.e., the receiver object, the \texttt{macroMap} method call and its function argument.
 Pattern matching happens upon these ASTs so, theoretically, we can choose to
-match successfully against ``List(1,2,3).macroMap(_ + 1)'' but not against ``val
-r = List(1,2,3); r.macroMap(_ + 1)'' depending on our needs. If the pattern
+match successfully against ``List(1,2,3).macroMap(\_ + 1)'' but not against ``val
+r = List(1,2,3); r.macroMap(\_ + 1)'' depending on our needs. If the pattern
 matching is successful, its respective compiler handler will eventually generate
 the AST which replaces the macro application's AST at the call-site, completing
 that way the low-level macro expansion. In our case, whenever scalac finds a
 Symbol of an application of the scala.collection.TraversableLike trait's
-macroMap method, it triggers the expansion we will describe in the next
+\texttt{macroMap} method, it triggers the expansion we will describe in the next
 subsection.
 
 Regular Scala macros implementations can be generic in the sense that they can
@@ -285,7 +259,7 @@ level compiler's FastTrack mechanism doesn't permit using this facility.
 Instead, we are forced to work directly with the compiler's internal type
 representations lowering the level of abstraction we can work with.
 
-FastTrack's special handler for the macroMap method, after
+FastTrack's special handler for the \texttt{macroMap} method, after
 doing some preprocessing on the pattern matched ASTs, will call the method
 that does the actual transformation we saw in the previous subsection. 
 
@@ -297,12 +271,12 @@ obtains from the handler. This method is defined in
 scala.tools.reflect.declosurify.Declosurify object ``def mapInfix[A, B](c0:
 Ctx)(f0: c0.Expr[A => B], inElemTpe: c0.Type, outElemTpe: c0.Type, inCollTpe:
 c0.Type, outCollTpe: c0.Type, bfTree: c0.Tree): c0.Tree''. Despite its name,
-mapInfix can generate ASTs for both macroMap and macroForeach. It's a curried
+mapInfix can generate ASTs for both \texttt{macroMap} and \texttt{macroForeach}. It's a curried
 method parameterized on the received function's input (A) and return (B) types.
 In the first parameter list, c0 is a context object as we described it above,
 giving us access to the macro application's call-site information. The most
 important field of c0 is the ``prefix'' which represents the receiver collection
-object of the macroMap application. We will call it simply ``prefix''
+object of the \texttt{macroMap} application. We will call it simply ``prefix''
 from now on. In the second parameter
 list, f0 represents the function's AST which is going to be applied to the
 prefix. Its type ``Expr'' wraps an AST and an internal type tag
@@ -312,15 +286,15 @@ compiler, since we cannot really exploit the (Weak)TypeTag's facilities. The
 next four arguments are:
  - inElemTpe: the internal compiler type of the prefix's elements
  - outElemTpe: the internal compiler type of the elements of the collection our
-macroMap
+\texttt{macroMap}
 is going to return
 - inCollTpe: the internal compiler type of the prefix
-- outCollTpe: the internal compiler type of the collection our macroMap is going
+- outCollTpe: the internal compiler type of the collection our \texttt{macroMap} is going
 to return
 
 The last element is the AST of the implicit
 scala.collection.generic.CanBuildFrom [cite adrian moors phd] object that got
-inserted by the compiler at the macroMap call-site. This provides us with an
+inserted by the compiler at the \texttt{macroMap} call-site. This provides us with an
 easy and accurate way to create the appropriate builder for the generated
 collection taking advantage of all the existing implicit CanBuildFrom objects
 that are declared in the standard library.
@@ -337,9 +311,9 @@ Scala. The same holds for the ``c0.Type''s that follow.
 Subsection: Transformation Requirements
 
 Knowing what our transformation method can operate upon we can examine the
-main points of the actual transformation. One of the first things ft-declosurify
+main points of the actual transformation. One of the first things \textsc{ft-declosurify}
 checks is if the ``outCollTpe'' is Unit or not (lines XX-YY). If it's Unit then
-it means the macro is applied only for its side-effects so it's a foreach call.
+it means the macro is applied only for its side-effects so it's a \texttt{foreach} call.
 Instead of relying on this heuristic, newer version of the Scala macros provide
 us with the exact name of the calling method.
 
@@ -353,12 +327,12 @@ last expression.
 the transformation easier.
 
 If any of the above points is not satisfied, then the mapInfix falls back to the
-default map/foreach implementation by generating an AST which
-calls the map/foreach method on the same prefix object (lines XX-YY).
+default \texttt{map}/\texttt{foreach} implementation by generating an AST which
+calls the \texttt{map}/\texttt{foreach} method on the same prefix object (lines XX-YY).
 
 The next important step is the transformation of the passed closure AST
 into a local free method AST (lines XX-YY). For example, the passed closure ``x
-=> x + 1'' would be transformed to ``def local1(x$1: Int): Int = x$1.+(1);''. A
+=> x + 1'' would be transformed to ``def local1(x\$1: Int): Int = x\$1.+(1);''. A
 closure like ``x => x + y'' where y is defined in the local scope would be
 transformed to something like ``def local1(x: Int): Int =
 x.+(TestMacroMapObject.this.y)''. Also, a closure like ``{println(''hi``); x =>
@@ -374,14 +348,14 @@ based on the same core transformation pattern. In pseudocode that structure
 could be described as:
 
 reify {
-  val local_method = local_method_AST.splice // we saw it in the previous
+  val local\_method = local\_method\_AST.splice // we saw it in the previous
 subsection
-  val inputCollection = prefix_AST.splice
-  var outputCollectionBuf = output_collection_buffer_AST.splice // will
+  val inputCollection = prefix\_AST.splice
+  var outputCollectionBuf = output\_collection\_buffer\_AST.splice // will
 hold or generate the new collection
   while (prefix.hasNext()) {
     val elem = prefix.getNext()
-    val result = local_method(elem)
+    val result = local\_method(elem)
     outputCollectionBuf.add(result)
   }
   outputCollectionBuf.generate()
@@ -411,18 +385,18 @@ Whatever AST is returned from the reify will eventually replace the macro
 application's AST in the first place.
 
 
-Subsection: Handling map's idiosyncrasies
+Subsection: Handling \texttt{map}'s idiosyncrasies
 
-In contrast to most of the other collections operations, a map operation can
+In contrast to most of the other collections operations, a \texttt{map} operation can
 generate a collection that has the same type constructor as the prefix
 collection but possibly with a different element type, or even a entirely
 different collection type. As an example of the former case, if f is a function
-from String to Int, and xs is a List[String], then xs map f gives a List[Int].
-Likewise, if ys is an Array[String], then ys map f gives a Array[Int]. As an
-example of the later case,   ``Map("a" -> 1, "b" -> 2) map { case (x, y) => y
+from String to Int, and xs is a List[String], then xs \texttt{map} f gives a List[Int].
+Likewise, if ys is an Array[String], then ys \texttt{map} f gives a Array[Int]. As an
+example of the later case,   ``Map("a" -> 1, "b" -> 2) \texttt{map} { case (x, y) => y
 }'' returns List(1, 2) of type scala.collection.immutable.Iterable[Int],
 which is different from the prefix's Map type. The upstream declosurify project
-could handle partially only the first case. ft-declosurify can handle both of
+could handle partially only the first case. \textsc{ft-declosurify} can handle both of
 the cases successfully due to the introduction of the implicit CanBuildFrom
 object, making it more general purpose.
 
@@ -436,14 +410,14 @@ traits, like scala.collection.mutable.ArraySeq,
 scala.collection.mutable.StringBuilder, scala.collection.mutable.ArrayBuffer,
 share the same transformation, since all of them are indexed *mutable*
 sequences. The exact transformation is defined on lines XX-YY. As an example,
-any macroMap applications on Arrays like:
+any \texttt{macroMap} applications on Arrays like:
 
-Array(1, 2, 3).macroMap(_ + 1)
+Array(1, 2, 3).macroMap(\_ + 1)
 
 will expand to:
 
 {
-  def local1(x$1: Int): Int = x$1.+(1);
+  def local1(x\$1: Int): Int = x\$1.+(1);
   val xs: Array[Int] = scala.this.Predef.intArrayOps(scala.Array.apply(1,
 scala.this.Predef.wrapIntArray(Array[Int]{2, 3}))).repr();
   var buf: Array[Int] = new Array[Int](xs.length());
@@ -468,15 +442,15 @@ Also, all of this category's collections can only be mutated through the
 update method (the assignment operator) on a specific index, with one
 exception, the scala.collection.mutable.ArrayBuffer. ArrayBuffer supports
 mutating methods for appending/removing elements which could affect the
-semantics of macroMap in case we mutate the underlying collection in the
-function we pass in macroMap. Our transformation seems to behave in the same
-way as the default map method. For example both ``buf map {
+semantics of \texttt{macroMap} in case we mutate the underlying collection in the
+function we pass in \texttt{macroMap}. Our transformation seems to behave in the same
+way as the default \texttt{map} method. For example both ``buf map {
 x => buf += x; x+1 }'' and ``buf macroMap { x => buf += x;
-x+1 }'' return ArrayBuffer(2, 3, 4). So, we assume the macroMap keeps the
-same semantics on the ArrayBuffer as the original map method.
+x+1 }'' return ArrayBuffer(2, 3, 4). So, we assume the \texttt{macroMap} keeps the
+same semantics on the ArrayBuffer as the original \texttt{map} method.
 
 In the next chapter will see how much faster this version is compared to the
-default map on Arrays.
+default \texttt{map} on Arrays.
 
 Subsection: scala.collection.LinearSeq Transformation
 
@@ -488,14 +462,14 @@ scala.collection.mutable.DoubleLinkedList. All of these collections are linear.
 For example, in this category's transformation we couldn't use the apply (for
 indexing) or the length method because both of them take linear time, instead of
 constant. The transformation is defined on lines XX-YY. As an example, any
-macroMap applications on scala.collection.immutable.List like:
+\texttt{macroMap} applications on scala.collection.immutable.List like:
 
-List(1, 2, 3).macroMap(_ + 1)
+List(1, 2, 3).macroMap(\_ + 1)
 
 will be replaced from:
 
 {
-  private def local1(x$1: Int): Int = x$1.+(1);
+  private def local1(x\$1: Int): Int = x\$1.+(1);
   private def builder1: scala.collection.mutable.Builder[Int,List[Int]] = {
     val b: scala.collection.mutable.Builder[Int,List[Int]] =
 immutable.this.List.canBuildFrom[Int].apply();
@@ -517,7 +491,7 @@ This category uses this transformation because:
 - tail takes constant time
 
 In the next chapter will see how much faster this version is compared to the
-default map on Lists.
+default \texttt{map} on Lists.
 
 Subsection: scala.collection.Traversable Transformation
 
@@ -527,14 +501,14 @@ immutable.IndexedSeqs. Obviously, since it includes such a broad range of
 collections we are allowed to use only methods that are supported from all
 collections, meaning we cannot use the length, apply, head, tail methods of the
 previous transformations. The transformation is defined on lines XX-YY. As an
-example, any macroMap applications on scala.collection.immutable.Set like:
+example, any \texttt{macroMap} applications on scala.collection.immutable.Set like:
 
-Set(1, 2, 3).macroMap(_ + 1)
+Set(1, 2, 3).macroMap(\_ + 1)
 
 will expand to:
 
 {
-  private def local1(x$1: Int): Int = x$1.+(1);
+  private def local1(x\$1: Int): Int = x\$1.+(1);
   private def builder1:
 scala.collection.mutable.Builder[Int,scala.collection.immutable.Set[Int]] = {
     val b:
@@ -555,7 +529,7 @@ immutable.this.Set.canBuildFrom[Int].apply();
 Here, we use the iterator method to generate a prefix's iterator object. All
 collections have an toIterator method since all of them implement the
 scala.collection.Iterable trait. Each collection implements it using its
-scala.collection.Traversable's foreach method, which is implemented according to
+scala.collection.Traversable's \texttt{foreach} method, which is implemented according to
 each collection's special characteristics in order to be more efficient.
 
 For the collections that implement the immutable.IndexedSeq trait, like Vector,

@@ -25,7 +25,7 @@ and far reaching implications.''
 
 Let's see what \emph{The Problem} is with a small example in a Java-like language. The
 Problem is getting the right amount of context in hot inner loops - which also
-contain a mega-morphic virtual call in the loop and not much else.  Here is a
+contain a \emph{megamorphic} virtual call in the loop and not much else.  Here is a
 naive implementation of a \texttt{map} method that applies a predetermined
 function to all the elements of a source array and assigns the result to a
 destination array. In this case we increment all source's elements by one:
@@ -60,6 +60,7 @@ apply on the basic data bits in the innermost loop of our iterator.
 
 In Java we often do this with either a \texttt{Callable} or a \texttt{Runnable}:\\
 
+\begin{figure}
 \begin{javaCode}
 // A sample iterator function
 void map( CallableOneArg fcn1arg, long[] dst, long[] src) {
@@ -67,6 +68,9 @@ void map( CallableOneArg fcn1arg, long[] dst, long[] src) {
     dst[i] = fcn1arg.call(src[i]);
 }
 \end{javaCode}
+\caption[Example of generic map in Java]{Example of generic map in Java}
+\label{java_generic_map}
+\end{figure}
   
 We need only 1 copy of our iterator, and we can apply nearly all kinds of one
 argument functions. Alas, that inner loop now contains a function call that
