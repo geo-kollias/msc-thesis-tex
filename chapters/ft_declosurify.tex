@@ -113,7 +113,7 @@ The builder creation and initialization takes place in the
 builder1 method. While we traverse the prefix, we apply the \texttt{local1} function to
 all elements and we append (through method \texttt{+=}) them to the builder. When the
 traversal is over, we call the builder's result method which returns the full
-target collection we want (a List in this example).
+target collection we want (a \texttt{List} in this example).
 
 In \texttt{macroMap}'s transformation, we see that there is no explicit call to any 
 \texttt{map} method. Instead, the list's traveral happens directly within a while loop 
@@ -170,42 +170,47 @@ In summary, \texttt{macroMap} transformation takes advantage of:
 \section{\textsc{ft-declosurify} Implementation Specifics}
 \label{ft_declosurify_impl}
 
+In this section, we will see the textsc{ft-declosurify} implementation in more detail.
+
+\subsection{ \texttt{macroMap}/\texttt{macroForeach} definitions}
+
 The \texttt{macroForeach} method, just like the standard \texttt{foreach}, is meant to traverse
-all elements of the collection, and apply the given operation, f, to each
-element. The invocation of f is done for its side effect only; in fact any
-function result of f is discarded. Similarly, \texttt{macroMap}, just like the standard
+all elements of the collection, and apply the given operation, \texttt{f}, to each
+element. The invocation of \texttt{f} is done for its side effect only; in fact any
+function result of \texttt{f} is discarded. Similarly, \texttt{macroMap}, just like the standard
 \texttt{map}, traverses all elements of the collection, and applies the given operation,
-f, to each element but, also, it always returns a collection whose type depends
-on f. We could see \texttt{macroMap}'s functionality as a superset of \texttt{macroForeach}'s
+\texttt{f}, to each element but, also, it always returns a collection whose type depends
+on \texttt{f}. We could see \texttt{macroMap}'s functionality as a superset of \texttt{macroForeach}'s
 functionality and that's true on the implementation side too. The same code
 handles both cases but, in the case of \texttt{macroForeach}, we ignore the result. For
 that reason and without any loss of generality we will be referring only to
 \texttt{macroMap} in the rest of the text.
 
-\texttt{macroMap} is defined in scala.collection.TraversableLike trait, where the
+\texttt{macroMap} is defined in \sv{scala.collection.TraversableLike} trait, where the
 standard library's \texttt{map} method is defined too. Its definition is an unusual one:
 
-``def macroMap[B, That](f0: A => B)(implicit bf: CanBuildFrom[Repr, B, That]):
-That = ???''
+\begin{scalaCode}
+def macroMap[B, That](f0: A => B)(implicit bf: CanBuildFrom[Repr, B, That]): That = ???'
+\end{scalaCode}
 
-Instead of a usual implementation on the right hand side, we see a ???. The ???
-is an actual special Scala method which is used to throw NotImplementedError
+Instead of a usual implementation on the right hand side, we see a \texttt{???}. The \texttt{???}
+is an actual special Scala method which is used to throw \texttt{NotImplementedError}
 exceptions. Our \texttt{macroMap} implementation will be generated at compile-time, as
 we will explain in the next subsections, so no exception is raised. It's here
 just to prevent syntax errors. 
 
 The above signature is exactly the same as the \texttt{map}'s one. Regarding
-type parameters, A is the collection's element type and, therefore, f0's
-argument type, B is f0's return type, Repr is the underlying collection's type
-and That is the generated collection's type. Also, as we said, \texttt{macroMap} is a
+type parameters, \texttt{A} is the collection's element type and, therefore, \texttt{f0}'s
+argument type, \texttt{B} is \texttt{f0}'s return type, \texttt{Repr} is the underlying collection's type
+and \texttt{That} is the generated collection's type. Also, as we said, \texttt{macroMap} is a
 curried method. The first parameter list accepts the operation's function. The
-second parameter gets an implicit CanBuildFrom object. CanBuildFrom objects are
+second parameter gets an implicit \texttt{CanBuildFrom} object. \texttt{CanBuildFrom} objects are
 builder factories which generate the appropriate
-scala.collection.generic.Builder objects depeding on their type parameters.
+\sv{scala.collection.generic.Builder} objects depeding on their type parameters.
 Generally, builders makes the creation of a new collection out of existing ones
-easier and more maintable. For example, a CanBuildFrom[List[String], Int,
-Array[Int]] object will create a Builder[Int, Array[Int]] object which can
-create an Array of integers out of a List of strings. Since bf is implicit, it
+easier and more maintable. For example, a \sv{CanBuildFrom[List[String], Int,
+Array[Int]]} object will create a \sv{Builder[Int, Array[Int]]} object which can
+create an \texttt{Array} of integers out of a \texttt{List} of strings. Since \texttt{bf} is implicit, it
 will usually be generated and passed by the compiler automatically.
 
 
@@ -213,58 +218,58 @@ Subsection: \textsc{ft-declosurify} in the Scala standard library
 
 The upstream declosurify project can be used as a library adding the -extension-
 methods \texttt{macroMap} and \texttt{macroForeach} on all Scala collections that implement the
-scala.collection.TraversableOnce trait and Arrays, through Scala's implicit
-conversions {cite implicit conversions}. Since, ultimately, we would like to
+\sv{scala.collection.TraversableOnce} trait and \texttt{Array}s, through Scala's implicit
+conversions \fxfatal{cite implicit conversions}. Since, ultimately, we would like to
 substitute the default \texttt{map} and \texttt{foreach} methods with the \texttt{macroMap} and
-\texttt{macroForeach} implementations, respectively, we had to move the definitions
+\texttt{macroForeach} implementations respectively, we had to move the definitions
 of \texttt{macroMap}, \texttt{macroForeach} inside the Scala standard library. The Scala standard
 library doesn't have access to the new compile-time reflection capabilities
-since it doesn't depend on the scala-reflect and scala-compiler packages, so we
+since it doesn't depend on the \sv{scala-reflect} and \sv{scala-compiler} packages, so we
 cannot have macro definitions in it. As a solution, we used the scala compiler's
-FastTrack mechanism defined in the scala.tools.reflect.FastTrack trait.
+\emph{FastTrack} mechanism defined in the \sv{scala.tools.reflect.FastTrack} trait.
 
-FastTrack is a low level mechanism of scalac to invoke macro
+\texttt{FastTrack} is a low level mechanism of scalac to invoke macro
 expansions for builtin macros and it is, also, the key machinery used by our
 implementation in order to register and invoke our transformations. One builtin
-macro that uses this mechanism is the reify function itself that we saw in the
-previous chapter. The FastTrack module uses a registry where one links a
-method's compiler Symbols with special handler methods. For example, whenever
-the compiler sees a Symbol representing an application of reify, it calls its
-respective FastTrack special handler which has access to the reify appication's
-call-site context and all of  its arguments' Abstract Syntax Trees (ASTs),
+macro that uses this mechanism is the \texttt{reify} function itself that we saw in the
+previous chapter. The \texttt{FastTrack} module uses a registry where one links a
+method's compiler \texttt{Symbol}s with special handler methods. For example, whenever
+the compiler sees a \texttt{Symbol} representing an application of \texttt{reify}, it calls its
+respective \texttt{FastTrack} special handler which has access to the reify appication's
+call-site context and all of  its arguments' Abstract Syntax Trees (ASTs) \fxfatal{abbr},
 through pattern matching. The call-site context object, generally, holds
 call-site information like the macro application's enclosing method, its
 enclosing class, its line in the file. The ASTs contain the internal
-representation of the macro application like ``List(1, 2, 3).macroMap(\_ + 1)''
+representation of the macro application like \sv{List(1, 2, 3).macroMap(\_ + 1)}
 i.e., the receiver object, the \texttt{macroMap} method call and its function argument.
 Pattern matching happens upon these ASTs so, theoretically, we can choose to
-match successfully against ``List(1,2,3).macroMap(\_ + 1)'' but not against ``val
-r = List(1,2,3); r.macroMap(\_ + 1)'' depending on our needs. If the pattern
+match successfully against \sv{List(1,2,3).macroMap(\_ + 1)} but not against \sv{val
+r = List(1,2,3); r.macroMap(\_ + 1)} depending on our needs. If the pattern
 matching is successful, its respective compiler handler will eventually generate
 the AST which replaces the macro application's AST at the call-site, completing
 that way the low-level macro expansion. In our case, whenever scalac finds a
-Symbol of an application of the scala.collection.TraversableLike trait's
+\texttt{Symbol} of an application of the \sv{scala.collection.TraversableLike} trait's
 \texttt{macroMap} method, it triggers the expansion we will describe in the next
 subsection.
 
 Regular Scala macros implementations can be generic in the sense that they can
 be customized with type parameters as any regular Scala method. On top of that,
 the Scala compiler allows us to ``tag'' each of these type parameters with
-special compiler-generated objects, of type (Weak)TypeTag [cite], that store the
+special compiler-generated objects, of type (\texttt{Weak})\texttt{TypeTag} \fxfatal{cite}, that store the
 type parameters' full types on each call and make them available at runtime. In
 short, it's Scala's solution against JVM's type erasure. This machinery is
-especially useful for macros, since we can inspect these TypeTag objects and
+especially useful for macros, since we can inspect these \texttt{TypeTag} objects and
 generate the most suitable code for each occasion. Unfortunately, using the low
-level compiler's FastTrack mechanism doesn't permit using this facility.
+level compiler's \texttt{FastTrack} mechanism doesn't permit us using this facility.
 Instead, we are forced to work directly with the compiler's internal type
 representations lowering the level of abstraction we can work with.
 
-FastTrack's special handler for the \texttt{macroMap} method, after
+\texttt{FastTrack}'s special handler for the \texttt{macroMap} method, after
 doing some preprocessing on the pattern matched ASTs, will call the method
 that does the actual transformation we saw in the previous subsection. 
 
 
-Subsection: Transformation Method Interface
+\subsection{Transformation Method Interface}
 
 Firstly, let's see the transformation method's signature and what arguments it
 obtains from the handler. This method is defined in
@@ -377,7 +382,7 @@ sequence has efficient apply, length, and (if mutable) update operations.
 Here, also, we see how important reifying and splicing operations are. The
 mentioned ASTs that we splice inside the reify above are constructed with one of
 these three ways depending on the occasion:
-- we get them directly from the FastTrack's pattern matching
+- we get them directly from the \texttt{FastTrack}'s pattern matching
 - we get them by using the ``Symbol''s and ``Type'''s APIs
 - we construct them manually.
 
@@ -401,16 +406,18 @@ the cases successfully due to the introduction of the implicit CanBuildFrom
 object, making it more general purpose.
 
 
-Subsection: Array, scala.collection.mutable.ArraysOps  and
+Subsection: \texttt{Array}, scala.collection.mutable.ArraysOps  and
 scala.collection.mutable.IndexedSeq Transformation
 
 scala.Array and all collections that implement the 
 scala.collection.mutable.ArrayOps and scala.collection.mutable.IndexedSeq
 traits, like scala.collection.mutable.ArraySeq,
-scala.collection.mutable.StringBuilder, scala.collection.mutable.ArrayBuffer,
+% \sv{scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}StringBuilder}, 
+scala . collection . mutable . StringBuilder,
+scala.collection.mutable.ArrayBuffer,
 share the same transformation, since all of them are indexed *mutable*
 sequences. The exact transformation is defined on lines XX-YY. As an example,
-any \texttt{macroMap} applications on Arrays like:
+any \texttt{macroMap} applications on \texttt{Array}s like:
 
 Array(1, 2, 3).macroMap(\_ + 1)
 
@@ -450,7 +457,7 @@ x+1 }'' return ArrayBuffer(2, 3, 4). So, we assume the \texttt{macroMap} keeps t
 same semantics on the ArrayBuffer as the original \texttt{map} method.
 
 In the next chapter will see how much faster this version is compared to the
-default \texttt{map} on Arrays.
+default \texttt{map} on \texttt{Array}s.
 
 Subsection: scala.collection.LinearSeq Transformation
 
@@ -491,7 +498,7 @@ This category uses this transformation because:
 - tail takes constant time
 
 In the next chapter will see how much faster this version is compared to the
-default \texttt{map} on Lists.
+default \texttt{map} on \texttt{List}s.
 
 Subsection: scala.collection.Traversable Transformation
 

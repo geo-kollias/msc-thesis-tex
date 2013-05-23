@@ -28,6 +28,7 @@
 \usepackage{subfig}
 \usepackage[draft]{fixme}
 \usepackage[colorinlistoftodos]{todonotes}
+% \usepackage{hyphenat}
 
 \cftsetpnumwidth{2em} %fixes spacing problem for tables / figures # >= .10 
 \setlength{\cftfignumwidth}{2.5em}
@@ -207,6 +208,9 @@ escapechar={\%},
 %% %\vspace{-0.07in}
 %% }
 
+% \newcommand{\svBreakablePeriod}{\do\.\do\f\do\e\do\c\do\t\do\a}
+% \newcommand{\sv}[1]{\BreakablePeriod\small\texttt{#1}}
+% \newcommand{\sv}[1]{{\small\texttt\BreakablePeriod{#1}}}
 \newcommand{\sv}[1]{{\small\texttt{#1}}}
 \newcommand{\tstamp}{\today}   
 \renewcommand{\chaptermark}[1]{\markboth{#1}{}}
