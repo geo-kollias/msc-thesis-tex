@@ -106,7 +106,7 @@ immutable.this.List.canBuildFrom[Int].apply();
 \caption[\sv{List(1, 2, 3).macroMap(\_ + 1)} example transformation]{\sv{List(1, 2, 3).macroMap(\_ + 1)} example transformation}
 \end{figure}
 
-Here we use a scala.collection.mutable.Builder object to construct the target
+Here we use a scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}Builder object to construct the target
 collection. The builder itself is created from the
 canBuildFrom object the compiler passed in implicitly, as we will explain more thoroughly in section~\ref{ft_declosurify_impl}. 
 The builder creation and initialization takes place in the
@@ -186,7 +186,7 @@ handles both cases but, in the case of \texttt{macroForeach}, we ignore the resu
 that reason and without any loss of generality we will be referring only to
 \texttt{macroMap} in the rest of the text.
 
-\texttt{macroMap} is defined in \sv{scala.collection.TraversableLike} trait, where the
+\texttt{macroMap} is defined in \sv{scala.\allowbreak{}collection.\allowbreak{}TraversableLike} trait, where the
 standard library's \texttt{map} method is defined too. Its definition is an unusual one:
 
 \begin{scalaCode}
@@ -206,7 +206,7 @@ and \texttt{That} is the generated collection's type. Also, as we said, \texttt{
 curried method. The first parameter list accepts the operation's function. The
 second parameter gets an implicit \texttt{CanBuildFrom} object. \texttt{CanBuildFrom} objects are
 builder factories which generate the appropriate
-\sv{scala.collection.generic.Builder} objects depeding on their type parameters.
+\sv{scala.\allowbreak{}collection.\allowbreak{}generic.Builder} objects depeding on their type parameters.
 Generally, builders makes the creation of a new collection out of existing ones
 easier and more maintable. For example, a \sv{CanBuildFrom[List[String], Int,
 Array[Int]]} object will create a \sv{Builder[Int, Array[Int]]} object which can
@@ -218,7 +218,7 @@ Subsection: \textsc{ft-declosurify} in the Scala standard library
 
 The upstream declosurify project can be used as a library adding the -extension-
 methods \texttt{macroMap} and \texttt{macroForeach} on all Scala collections that implement the
-\sv{scala.collection.TraversableOnce} trait and \texttt{Array}s, through Scala's implicit
+\sv{scala.\allowbreak{}collection.\allowbreak{}TraversableOnce} trait and \texttt{Array}s, through Scala's implicit
 conversions \fxfatal{cite implicit conversions}. Since, ultimately, we would like to
 substitute the default \texttt{map} and \texttt{foreach} methods with the \texttt{macroMap} and
 \texttt{macroForeach} implementations respectively, we had to move the definitions
@@ -248,7 +248,7 @@ r = List(1,2,3); r.macroMap(\_ + 1)} depending on our needs. If the pattern
 matching is successful, its respective compiler handler will eventually generate
 the AST which replaces the macro application's AST at the call-site, completing
 that way the low-level macro expansion. In our case, whenever scalac finds a
-\texttt{Symbol} of an application of the \sv{scala.collection.TraversableLike} trait's
+\texttt{Symbol} of an application of the \sv{scala.\allowbreak{}collection.\allowbreak{}TraversableLike} trait's
 \texttt{macroMap} method, it triggers the expansion we will describe in the next
 subsection.
 
@@ -298,7 +298,7 @@ is going to return
 to return
 
 The last element is the AST of the implicit
-scala.collection.generic.CanBuildFrom [cite adrian moors phd] object that got
+scala.\allowbreak{}collection.\allowbreak{}generic.CanBuildFrom [cite adrian moors phd] object that got
 inserted by the compiler at the \texttt{macroMap} call-site. This provides us with an
 easy and accurate way to create the appropriate builder for the generated
 collection taking advantage of all the existing implicit CanBuildFrom objects
@@ -399,7 +399,7 @@ different collection type. As an example of the former case, if f is a function
 from String to Int, and xs is a List[String], then xs \texttt{map} f gives a List[Int].
 Likewise, if ys is an Array[String], then ys \texttt{map} f gives a Array[Int]. As an
 example of the later case,   ``Map("a" -> 1, "b" -> 2) \texttt{map} { case (x, y) => y
-}'' returns List(1, 2) of type scala.collection.immutable.Iterable[Int],
+}'' returns List(1, 2) of type scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Iterable[Int],
 which is different from the prefix's Map type. The upstream declosurify project
 could handle partially only the first case. \textsc{ft-declosurify} can handle both of
 the cases successfully due to the introduction of the implicit CanBuildFrom
@@ -410,11 +410,11 @@ Subsection: \texttt{Array}, scala.collection.mutable.ArraysOps  and
 scala.collection.mutable.IndexedSeq Transformation
 
 scala.Array and all collections that implement the 
-scala.collection.mutable.ArrayOps and scala.collection.mutable.IndexedSeq
-traits, like scala.collection.mutable.ArraySeq,
+scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}ArrayOps and scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}IndexedSeq
+traits, like scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}ArraySeq,
 % \sv{scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}StringBuilder}, 
 scala . collection . mutable . StringBuilder,
-scala.collection.mutable.ArrayBuffer,
+scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}ArrayBuffer,
 share the same transformation, since all of them are indexed *mutable*
 sequences. The exact transformation is defined on lines XX-YY. As an example,
 any \texttt{macroMap} applications on \texttt{Array}s like:
@@ -447,7 +447,7 @@ mutable, and takes constant time
 
 Also, all of this category's collections can only be mutated through the
 update method (the assignment operator) on a specific index, with one
-exception, the scala.collection.mutable.ArrayBuffer. ArrayBuffer supports
+exception, the scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}ArrayBuffer. ArrayBuffer supports
 mutating methods for appending/removing elements which could affect the
 semantics of \texttt{macroMap} in case we mutate the underlying collection in the
 function we pass in \texttt{macroMap}. Our transformation seems to behave in the same
@@ -461,15 +461,15 @@ default \texttt{map} on \texttt{Array}s.
 
 Subsection: scala.collection.LinearSeq Transformation
 
-This category includes scala.collection.immutable.List,
-scala.collection.immutable.Stream, scala.collection.immutable.Queue,
-scala.collection.immutable.Stack, scala.collection.mutable.MutableList,
-scala.collection.mutable.MutableList, scala.collection.mutable.LinkedList,
-scala.collection.mutable.DoubleLinkedList. All of these collections are linear.
+This category includes scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}List,
+scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Stream, scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Queue,
+scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Stack, scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}MutableList,
+scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}MutableList, scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}LinkedList,
+scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}DoubleLinkedList. All of these collections are linear.
 For example, in this category's transformation we couldn't use the apply (for
 indexing) or the length method because both of them take linear time, instead of
 constant. The transformation is defined on lines XX-YY. As an example, any
-\texttt{macroMap} applications on scala.collection.immutable.List like:
+\texttt{macroMap} applications on scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}List like:
 
 List(1, 2, 3).macroMap(\_ + 1)
 
@@ -508,7 +508,7 @@ immutable.IndexedSeqs. Obviously, since it includes such a broad range of
 collections we are allowed to use only methods that are supported from all
 collections, meaning we cannot use the length, apply, head, tail methods of the
 previous transformations. The transformation is defined on lines XX-YY. As an
-example, any \texttt{macroMap} applications on scala.collection.immutable.Set like:
+example, any \texttt{macroMap} applications on scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Set like:
 
 Set(1, 2, 3).macroMap(\_ + 1)
 
@@ -535,8 +535,8 @@ immutable.this.Set.canBuildFrom[Int].apply();
 
 Here, we use the iterator method to generate a prefix's iterator object. All
 collections have an toIterator method since all of them implement the
-scala.collection.Iterable trait. Each collection implements it using its
-scala.collection.Traversable's \texttt{foreach} method, which is implemented according to
+scala.\allowbreak{}collection.\allowbreak{}Iterable trait. Each collection implements it using its
+scala.\allowbreak{}collection.\allowbreak{}Traversable's \texttt{foreach} method, which is implemented according to
 each collection's special characteristics in order to be more efficient.
 
 For the collections that implement the immutable.IndexedSeq trait, like Vector,

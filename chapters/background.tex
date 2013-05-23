@@ -22,26 +22,26 @@ transformation plan.
 All collection classes are found in the package \sv{scala.collection} or one of its
 sub-packages \texttt{mutable}, \texttt{immutable}, and \texttt{generic}. Most collection
 classes needed by client code exist in three variants, which are located in packages
-\sv{scala.collection}, \sv{scala.collection.immutable}, and \sv{scala.collection.mutable},
+\sv{scala.collection}, \sv{scala.\allowbreak{}collection.\allowbreak{}immutable}, and \sv{scala.\allowbreak{}collection.\allowbreak{}mutable},
 respectively. Each variant has different characteristics with respect to
 mutability.
 
-A collection in package \sv{scala.collection.immutable} is guaranteed to be immutable
-for everyone. Such a collection will never change after it is created. A collection in package \sv{scala.collection.mutable} is known to have some operations that change the collection in place.
+A collection in package \sv{scala.\allowbreak{}collection.\allowbreak{}immutable} is guaranteed to be immutable
+for everyone. Such a collection will never change after it is created. A collection in package \sv{scala.\allowbreak{}collection.\allowbreak{}mutable} is known to have some operations that change the collection in place.
 
 A collection in package \sv{scala.collection} can be either mutable or immutable. For
 instance, \sv{collection.IndexedSeq[T]} is a superclass of both
-\sv{collection.immutable.IndexedSeq[T]} and \sv{collection.mutable.IndexedSeq[T]}.
+\sv{collection.\allowbreak{}immutable.\allowbreak{}IndexedSeq[T]} and \sv{collection.\allowbreak{}mutable.\allowbreak{}IndexedSeq[T]}.
 Generally, the root collections in package \sv{scala.collection} define the same
 interface as the immutable collections, and the mutable collections in package
-\sv{scala.collection.mutable} typically add some side-effecting modification
+\sv{scala.\allowbreak{}collection.\allowbreak{}mutable} typically add some side-effecting modification
 operations to this immutable interface.
 
 By default, Scala always picks immutable collections. For instance, if we just
 write \texttt{Set} without any prefix or without having imported \texttt{Set} from somewhere, we
 get an immutable set because these are the default bindings imported from the scala
 package. To get the mutable default version, we need to write explicitly
-\sv{collection.mutable.Set}.
+\sv{collection.\allowbreak{}mutable.\allowbreak{}Set}.
 
 Figure~\ref{colls} shows all collections in package \sv{scala.collection}. These
 are all high-level abstract classes or traits, which generally have mutable as
