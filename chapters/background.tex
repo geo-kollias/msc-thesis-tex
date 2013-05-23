@@ -2,10 +2,10 @@
 
 Scala \fxfatal{cite} is a relatively new statically typed programming language
 that tries to unify the object-oriented and functional programming paradigms
-into one coherent paradigm, recently called object-functional Currently, its
+into one coherent paradigm, recently called object-functional. Currently, its
 main implementation runs on the JVM and so its main goal is to provide a more
 general and uniform superset of Java. Since version 2.8, Scala has a rich
-collections library \fxfatal{cite} and since version 2.10 it has a completely new reflection
+collections library \fxfatal{cite} and since version 2.10, it has a completely new reflection
 subsystem \fxfatal{cite}.
 
 \section{Scala Collections Overview}
@@ -50,7 +50,7 @@ well as immutable implementations. \footnote{Figure courtesy of Matthias Doenitz
 \begin{figure}
 \centering
 \includegraphics{figures/colls.png}
-\caption[All scala.collection collections]{Basic collections in \sv{scala.collection}
+\caption[All \sv{scala.collection} collections]{Basic collections in \sv{scala.collection}
 }
 \label{colls}
 \end{figure}
@@ -69,9 +69,9 @@ subsystem adding both run time and compile metaprogramming capabilities. The new
 run-time reflection is much more general and feature complete compared to Java's
 reflection. Compile-time reflection is quite rare in mainstream statically typed
 programming languages and, currently, it can only be found in more exotic
- languages like Haskell \fxfatal{cite Template Haskell} and Nemerle \fxfatal{cite Nemerle}.
+ languages like Haskell \fxfatal{cite Template Haskell} and Nemerle\fxfatal{cite Nemerle}.
  Compile-time reflection enabled the introduction of an experimental version of type-safe
- syntactic macros {cite Scala Macros, a Technical Report}. 
+ syntactic macros\fxfatal{cite Scala Macros, a Technical Report}. 
 
 Syntactic macro systems work at the level of abstract syntax trees and preserve
 the lexical structure of the original program. Macro systems that work at the
@@ -116,9 +116,9 @@ existing abstract-syntax trees (ASTs) \fxfatal{abbr} during the compiler's typec
 All the new or changed ASTs are re-typechecked, guaranteeing us type-safe
 transformations. scalac represents ASTs with objects of type
 \sv{scala.reflect.api.Tree} or \sv{scala.reflect.api.Exprs}, which is just a typed-wrapper
-of \sv{scala.reflect.api.Tree}. Through the available reflection APIs, we can create,
-inspect or change the compiler's \sv{scala.reflect.api.Symbols} and
-\sv{scala.reflect.api.Types} objects that are related with these ASTs.
+of \sv{scala.reflect.api.Tree}. Through the available compiler APIs, we can create,
+inspect or change the compiler's \sv{scala.reflect.api.Symbol} and
+\sv{scala.reflect.api.Type} objects that are related with these ASTs.
 
 For example, we can create the AST of the Scala expression \sv{x < 10} manually,
 either with a macro or directly within scalac, with this code
@@ -126,18 +126,18 @@ either with a macro or directly within scalac, with this code
 List(Literal(Constant(10)))))}. \texttt{Apply}, \texttt{Select}, \texttt{Ident}, \texttt{Literal},
 \texttt{Constant} are AST objects themselves of \sv{scala.reflect.api.Tree} type.
 
-Obviously the AST construction is cumbersome and error-prone. But most probably
+Obviously, the AST construction is cumbersome and error-prone. But most probably
 it is also wrong. If the AST was generated within an internal scalac method or
 within a macro, the returned AST will be inlined and type-checked at the
 method/macro call site. But this means that the identifier \texttt{x} will be
 type-checked at a point where it is most likely not visible, or in the worst
 case they might refer to something else. In the macro literature, this
-insensitivity to bindings is called non-hygienic \fxfatal{cite 19, 8}. Scala's
+insensitivity to bindings is called non-hygienic\fxfatal{cite 19, 8}. Scala's
 compile-time reflection solves the non-hygiene problem providing a built-in
 macro, called \texttt{reify}, that produces its tree one stage later.
 
 The \texttt{reify} macro plays a crucial role in the compile-time metaprogramming. Its
-definition as a member of Context is:
+definition as a member of \texttt{Context} is:
 
 \begin{scalaCode}
 def reify[T](expr : T): Expr[T] = macro . . .

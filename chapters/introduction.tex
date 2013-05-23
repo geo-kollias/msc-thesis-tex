@@ -1,14 +1,7 @@
+\label{introduction}
 This chapter will introduce our work and the problem it tries to attack. It is a
 real-world hard problem that affects the whole Java Virtual Machine (JVM) \fxfatal{add abbr}
-ecosystem. This work tries to mitigate many of its implications. In the next chapter, we
-will have an overview of the Scala language, its standard library collections and its new
-compile-time reflection subsystem in order to prepare us for Chapter X
-where we will explain our project's implementation and core functionality.
-Chapter X provides us with several benchmarks, showing promising performance
-speedups. Chapter X presents some similar work in the area. Finally, Chapter X
-summarizes this work.
-
-Section: The Problem and Our Approach
+ecosystem.
 
 In ``Fixing The Inlining Problem'' \fxfatal{cite}, Cliff Click describes an issue
 that has emerged the last few years in the JVM ecosystem:
@@ -25,7 +18,7 @@ and far reaching implications.''
 
 Let's see what \emph{The Problem} is with a small example in a Java-like language. The
 Problem is getting the right amount of context in hot inner loops - which also
-contain a \emph{megamorphic} virtual call in the loop and not much else.  Figure~\ref{java_naive_map} 
+contain a \emph{megamorphic} virtual call in the loop and not much else. Megamorphic virtual method calls are these whose receiver can have many different runtime types. Figure~\ref{java_naive_map} 
 shows a naive implementation of a \texttt{map} method that applies a predetermined
 function to all the elements of a source array and assigns the result to a
 destination array. In this case we increment all source's elements by one.
@@ -60,7 +53,7 @@ complex.
 More often than not, after implementing \texttt{map}, we would like to add more
 functions similar to \texttt{add1}. We might also want to add \texttt{add2}, \texttt{mult3},
 \texttt{filter} and so on. What we really want is a way to pass in the function to
-apply on the basic data bits in the innermost loop of our iterator. In Java, we often do this with either a \texttt{Callable} or a \texttt{Runnable}. Figure~\ref{java_generic_map} uses \texttt{Callable}.
+apply on the basic data bits in the innermost loop of our iterator. In Java, we often do this with either a \texttt{Callable} or a \texttt{Runnable}. Figure~\ref{java_generic_map}'s example uses \texttt{Callable}.
 
 \begin{figure}
 \begin{javaCode}
@@ -74,7 +67,7 @@ void map( CallableOneArg fcn1arg, long[] dst, long[] src) {
 \label{java_generic_map}
 \end{figure}
   
-We need only 1 copy of our iterator, and we can apply nearly all kinds of one
+We need only one copy of our iterator, and we can apply nearly all kinds of one
 argument functions. Alas, that inner loop now contains a function call that
 needs inlining and there are dozens of different functions for \sv{fcn1arg.call}.
 The JIT does not know which one to inline here, because all these different
@@ -101,18 +94,16 @@ coding styles.
 
 Scala, as most of the modern JVM languages, is no exception and it suffers from
 The Problem too and, actually, it affects its adoption negatively. At the end of
-2011, an email from a Yammer employee towards the CEO of TypeSafe, the company
-backing the Scala ecosystem, about Scala shortcomings, leaked to the public
-\fxfatal{cite http://www.infoq.com/news/2011/11/yammer-scala}. Most complaints were
+2011, an email from a \textsc{Yammer} employee towards the CEO of \textsc{TypeSafe}, the company
+backing the Scala ecosystem, about Scala shortcomings, leaked to the public\fxfatal{cite http://www.infoq.com/news/2011/11/yammer-scala}. Most technical issues were
 related with The Problem and, more specifically, with the Scala standard
 library collections' performance. 
 
 In the next chapters we will see where exactly the problem lies and how
 our project can help us alleviate it. We have named our project
-\textsc{ft-declosurify}; the ft prefix stands for Scala compiler's FastTrack
-mechanism, as we will see in Chapter X, and the declosurify suffix suggests that
-the implementation is based on Paul Phillips's original \textsc{declosurify} project
-fxfatal{cite github url}. 
+\textsc{ft-declosurify}; the \emph{ft} prefix stands for Scala compiler's FastTrack
+mechanism, as we will see in Chapter~\ref{ft_declosurify}, and the \emph{declosurify} suffix suggests that
+the implementation is based on Paul Phillips's original \textsc{declosurify} project\fxfatal{cite github url}. 
 
 ft-declosurify defines two methods, \texttt{macroMap} and \texttt{macroForeach}, that can be used
 from all the Scala standard libary collections. They offer the same
@@ -122,5 +113,9 @@ Problem. In most cases, \texttt{macroMap}/\texttt{macroForeach} can be considere
 drop-in replacements of the default \texttt{map}/\texttt{foreach} methods.
 
 Our solution tries to attack The Problem using Scala's new compile-time
-reflection subsystem. The next chapter will give us an overview of both the
-Scala collections and the new compile-time reflection capabilities.
+reflection subsystem. So, the next chapter will give us an overview of the Scala language, its standard library collections and its new
+compile-time reflection subsystem, in order to prepare us for Chapter~\ref{ft_declosurify}
+where we will explain our project's core functionality and implementation.
+Chapter~\ref{benchmarks} provides us with several benchmarks, showing promising performance
+speedups. Chapter~\ref{related} presents some similar work in the area. Finally, Chapter~\ref{conclusions}
+summarizes this work and mentions its drawbacks.
