@@ -25,11 +25,12 @@ and far reaching implications.''
 
 Let's see what \emph{The Problem} is with a small example in a Java-like language. The
 Problem is getting the right amount of context in hot inner loops - which also
-contain a \emph{megamorphic} virtual call in the loop and not much else.  Here is a
-naive implementation of a \texttt{map} method that applies a predetermined
+contain a \emph{megamorphic} virtual call in the loop and not much else.  Figure~\ref{java_naive_map} 
+shows a naive implementation of a \texttt{map} method that applies a predetermined
 function to all the elements of a source array and assigns the result to a
-destination array. In this case we increment all source's elements by one:
+destination array. In this case we increment all source's elements by one.
 
+\begin{figure}
 \begin{javaCode}
 // The function in the inner loop
 long add1(long a) {return a + 1;}
@@ -39,6 +40,9 @@ void map(long[] dst, long[] src) {
     dst[i] = add1(src[i]); // around a simple loop body
 }
 \end{javaCode}
+\caption[Example of naive \texttt{map} in Java]{Example of naive \texttt{map} in Java}
+\label{java_naive_map}
+\end{figure}
 
 Inlining the function \texttt{add1} is crucial to performance here.  Without
 inlining the compiler does not know what the loop body does (because function
@@ -56,9 +60,7 @@ complex.
 More often than not, after implementing \texttt{map}, we would like to add more
 functions similar to \texttt{add1}. We might also want to add \texttt{add2}, \texttt{mult3},
 \texttt{filter} and so on. What we really want is a way to pass in the function to
-apply on the basic data bits in the innermost loop of our iterator.
-
-In Java we often do this with either a \texttt{Callable} or a \texttt{Runnable}:\\
+apply on the basic data bits in the innermost loop of our iterator. In Java, we often do this with either a \texttt{Callable} or a \texttt{Runnable}. Figure~\ref{java_generic_map} uses \texttt{Callable}.
 
 \begin{figure}
 \begin{javaCode}
@@ -68,7 +70,7 @@ void map( CallableOneArg fcn1arg, long[] dst, long[] src) {
     dst[i] = fcn1arg.call(src[i]);
 }
 \end{javaCode}
-\caption[Example of generic map in Java]{Example of generic map in Java}
+\caption[Example of generic \texttt{map} in Java]{Example of generic \texttt{map} in Java}
 \label{java_generic_map}
 \end{figure}
   

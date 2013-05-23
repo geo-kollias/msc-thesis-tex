@@ -122,7 +122,7 @@ The local1 method is called a free method since it's not directly attached to an
 During scalac's ``flatten'' phase, it will be lifted and become a method of
 the enclosing class with a new mangled name. That way \texttt{local1}'s receiver runtime type
 will, likely ,remain unchanged during a program's execution. Therefore, it's much easier for JVM
-to \texttt{inline} \texttt{local1} and reason about further optimizations.
+to inline \texttt{local1} and reason about further optimizations.
 
 We can easily see that \textsc{ft-declosurify} works well for cases where the closure
 is statically available at the call-site, like \sv{List(1,2,3).macroMap(x => x + 1)},
@@ -214,7 +214,7 @@ create an \texttt{Array} of integers out of a \texttt{List} of strings. Since \t
 will usually be generated and passed by the compiler automatically.
 
 
-Subsection: \textsc{ft-declosurify} in the Scala standard library
+\subsection{\textsc{ft-declosurify} in the Scala standard library}
 
 The upstream declosurify project can be used as a library adding the -extension-
 methods \texttt{macroMap} and \texttt{macroForeach} on all Scala collections that implement the
@@ -273,156 +273,226 @@ that does the actual transformation we saw in the previous subsection.
 
 Firstly, let's see the transformation method's signature and what arguments it
 obtains from the handler. This method is defined in
-scala.tools.reflect.declosurify.Declosurify object ``def mapInfix[A, B](c0:
-Ctx)(f0: c0.Expr[A => B], inElemTpe: c0.Type, outElemTpe: c0.Type, inCollTpe:
-c0.Type, outCollTpe: c0.Type, bfTree: c0.Tree): c0.Tree''. Despite its name,
-mapInfix can generate ASTs for both \texttt{macroMap} and \texttt{macroForeach}. It's a curried
-method parameterized on the received function's input (A) and return (B) types.
-In the first parameter list, c0 is a context object as we described it above,
-giving us access to the macro application's call-site information. The most
-important field of c0 is the ``prefix'' which represents the receiver collection
-object of the \texttt{macroMap} application. We will call it simply ``prefix''
-from now on. In the second parameter
-list, f0 represents the function's AST which is going to be applied to the
-prefix. Its type ``Expr'' wraps an AST and an internal type tag
-(``TypeTag'') to provide access to the type of the tree. As we mentioned
-before, using ``Expr'' doesn't really help us working at that level of the
-compiler, since we cannot really exploit the (Weak)TypeTag's facilities. The
-next four arguments are:
- - inElemTpe: the internal compiler type of the prefix's elements
- - outElemTpe: the internal compiler type of the elements of the collection our
-\texttt{macroMap}
-is going to return
-- inCollTpe: the internal compiler type of the prefix
-- outCollTpe: the internal compiler type of the collection our \texttt{macroMap} is going
-to return
+\sv{scala.\allowbreak{}tools.\allowbreak{}reflect.\allowbreak{}declosurify.\allowbreak{}Declosurify} object 
 
-The last element is the AST of the implicit
-scala.\allowbreak{}collection.\allowbreak{}generic.CanBuildFrom [cite adrian moors phd] object that got
+\begin{scalaCode}
+def mapInfix[A, B](c0: Ctx)(f0: c0.Expr[A => B], inElemTpe: c0.Type, outElemTpe: c0.Type, inCollTpe: c0.Type, outCollTpe: c0.Type, bfTree: c0.Tree): c0.Tree
+\end{scalaCode}
+
+Despite its name,
+\texttt{mapInfix} can generate ASTs for both \texttt{macroMap} and \texttt{macroForeach}. It's a curried
+method parameterized on the received function's input (\texttt{A}) and return (\texttt{B}) types.
+In the first parameter list, \texttt{c0} is a context object as we described it above,
+giving us access to the macro application's call-site information. The most
+important field of \texttt{c0} is the \emph{prefix} which represents the receiver collection
+object of the \texttt{macroMap} application. We will call it simply prefix
+from now on. In the second parameter
+list, \texttt{f0} represents the function's AST which is going to be applied to the
+prefix. Its type \texttt{Expr} wraps an AST and an internal type tag
+(\texttt{TypeTag}) to provide access to the type of the tree. As we mentioned
+before, using \texttt{Expr} doesn't really help us working at that level of the
+compiler, since we cannot really exploit the (\texttt{Weak})\texttt{TypeTag}'s facilities. The
+next four arguments are:
+\begin{itemize}
+ \item
+  \texttt{inElemTpe}: the internal compiler type of the prefix's elements
+ \item
+  \texttt{outElemTpe}: the internal compiler type of the elements of the collection our
+\texttt{macroMap} is going to return
+ \item
+  \texttt{inCollTpe}: the internal compiler type of the prefix
+ \item
+  \texttt{outCollTpe}: the internal compiler type of the collection our \texttt{macroMap} is going
+to return
+ \item
+  \texttt{bfTree}: the AST of the implicit \sv{scala.\allowbreak{}collection.\allowbreak{}generic.CanBuildFrom} \fxfatal{cite adrian moors phd} object that got
 inserted by the compiler at the \texttt{macroMap} call-site. This provides us with an
 easy and accurate way to create the appropriate builder for the generated
 collection taking advantage of all the existing implicit CanBuildFrom objects
 that are declared in the standard library.
+\end{itemize}
 
 It's easy to observe that all of second parameter list types are prepended
-with the context object c0. This qualified notation realizes the notion of
-Scala's path-depedent types. For example, here we choose the ``Expr'' that is
-defined inside the c0 object. Generally, if we have two different objects c0 and
-c1 of the same type which include an inner type MyType, e.g., through type
-member or inner class,  then c0.MyType is a different type from c1.MyType in
-Scala. The same holds for the ``c0.Type''s that follow.
+with the context object \texttt{c0}. This qualified notation realizes the notion of
+Scala's path-depedent types. For example, here we choose the \texttt{Expr} that is
+defined inside the \texttt{c0} object. Generally, if we have two different objects \texttt{c0} and
+\texttt{c1} of the same type which include an inner type \texttt{MyType}, e.g., through type
+member or inner class,  then \sv{c0.MyType} is a different type from \sv{c1.MyType} in
+Scala. The same holds for the \sv{c0.Type}s that follow.
 
 
-Subsection: Transformation Requirements
+\subsection{Transformation Requirements}
 
 Knowing what our transformation method can operate upon we can examine the
 main points of the actual transformation. One of the first things \textsc{ft-declosurify}
-checks is if the ``outCollTpe'' is Unit or not (lines XX-YY). If it's Unit then
+checks is if the \texttt{outCollTpe} is Unit. If it's Unit then
 it means the macro is applied only for its side-effects so it's a \texttt{foreach} call.
 Instead of relying on this heuristic, newer version of the Scala macros provide
 us with the exact name of the calling method.
 
 After that, we check three conditions to ensure that a typical
-transformation can take place (lines XX-YY):
-- the f0 AST is actually a function AST or a block whose last
+transformation can take place:
+\begin{itemize}
+ \item
+  the \texttt{f0} AST is actually a function AST or a block whose last
 expression is a function, since, in Scala, the value of a block is the block's
 last expression.
-- the f0 AST doesn't contain any return expressions.
-- macro application is enclosed in a method. Currently, that limitation makes
+ \item
+    the \texttt{f0} AST doesn't contain any return expressions.
+ \item
+    macro application is enclosed in a method. Currently, that limitation makes
 the transformation easier.
+\end{itemize}
 
 If any of the above points is not satisfied, then the mapInfix falls back to the
 default \texttt{map}/\texttt{foreach} implementation by generating an AST which
-calls the \texttt{map}/\texttt{foreach} method on the same prefix object (lines XX-YY).
+calls the \texttt{map}/\texttt{foreach} method on the same prefix object:
+
+\begin{scalaCode}
+def mkFallbackImpl: c.Tree = {
+  val name: TermName = if (isForeach) "foreach" else "map"
+  val pre = c.prefix.tree
+  val fallbacktree = Apply(Select(pre, name), f0.tree :: Nil)
+  fallbacktree
+}
+\end{scalaCode}
+
 
 The next important step is the transformation of the passed closure AST
-into a local free method AST (lines XX-YY). For example, the passed closure ``x
-=> x + 1'' would be transformed to ``def local1(x\$1: Int): Int = x\$1.+(1);''. A
-closure like ``x => x + y'' where y is defined in the local scope would be
-transformed to something like ``def local1(x: Int): Int =
-x.+(TestMacroMapObject.this.y)''. Also, a closure like ``{println(''hi``); x =>
-x + 1}'' would be transformed to ``println(''hi``); def local1(x: Int): Int =
-x.+(1)''
+into a local free method AST:
 
-Subsection: Transformation Choice and Pattern
+\begin{scalaCode}
+def functionToLocalMethod(fnTree: Function): DefDef = {
+  val Function(fparams, fbody) = fnTree
+  val frestpe = fbody.tpe
+  val fsyms   = fparams map (_.symbol)
+  val vparams = for (vd @ ValDef(mods, name, tpt, _) <- fparams) yield ValDef(mods, name, TypeTree(vd.symbol.typeSignature.normalize), EmptyTree)
+  val method  = newLocalMethod(freshName("local"), vparams, frestpe)
+  val tree    = DefDef(NoMods, freshName("local"), Nil, List(vparams), TypeTree(frestpe), c.resetAllAttrs(fbody.duplicate))
+
+  tree setSymbol method
+  c.resetAllAttrs(tree)
+  c.typeCheck(tree).asInstanceOf[DefDef]
+}
+\end{scalaCode}
+
+For example, the passed closure \sv{x => x + 1} would be transformed to 
+\begin{scalaCode}
+def local1(x$1: Int): Int = x$1.+(1);
+\end{scalaCode}.
+A closure like \sv{x => x + y} where \texttt{y} is defined in the local scope would be
+transformed to something like \sv{def local1(x: Int): Int =
+x.+(TestMacroMapObject.this.y)}. Also, a closure like \sv{{println("hi"); x =>
+x + 1}} would be transformed to 
+\begin{scalaCode}
+println("hi");
+def local1(x: Int): Int = x.+(1);
+\end{scalaCode}
+
+\subsection{Transformation Choice and Idiosyncrasies}
 
 The transformation choice depends primarily upon the prefix's type. Right now,
 there are three different transformation paths for different kinds of
-prefixes. We will check them in the following subsections but all of them are
-based on the same core transformation pattern. In pseudocode that structure
-could be described as:
-
-reify {
-  val local\_method = local\_method\_AST.splice // we saw it in the previous
-subsection
-  val inputCollection = prefix\_AST.splice
-  var outputCollectionBuf = output\_collection\_buffer\_AST.splice // will
-hold or generate the new collection
-  while (prefix.hasNext()) {
-    val elem = prefix.getNext()
-    val result = local\_method(elem)
-    outputCollectionBuf.add(result)
-  }
-  outputCollectionBuf.generate()
-}
+prefixes. We will check them in the following subsections, but all of them generate
+similar code with the original Scala \texttt{map} implementation, although they use 
+more low-level constructs.
 
 The reasons we need differrent implementations for different kinds of
 prefixes and target collections are:
-- Each kind has different API, e.g., different supported methods
-- Different implementation logic is needed for each kind in order to produce
+
+\begin{itemize}
+ \item
+  Each kind has different API, e.g., different supported methods.
+ \item
+  Different implementation logic is needed for each kind in order to produce
 faster code, by exploiting each kinds' specific characteristics since the same
 methods might take different time on different collections.
+\end{itemize}
 
-Since we are more interested in the sequences collections, as they are more
-common, trait Seq has two subtraits LinearSeq, and IndexedSeq. These do not add
-any new operations, but each offers different performance characteristics: A
-linear sequence has efficient head and tail operations, whereas an indexed
-sequence has efficient apply, length, and (if mutable) update operations. 
+For example, trait \texttt{Seq} has two subtraits \texttt{LinearSeq}, and \texttt{IndexedSeq}.
+These do not add any new operations, but each offers different performance characteristics: A
+linear sequence has efficient \texttt{head} and \texttt{tail} operations, whereas an indexed
+sequence has efficient \texttt{apply}, \texttt{length}, and (if mutable) \texttt{update} operations. 
 
 Here, also, we see how important reifying and splicing operations are. The
 mentioned ASTs that we splice inside the reify above are constructed with one of
 these three ways depending on the occasion:
-- we get them directly from the \texttt{FastTrack}'s pattern matching
-- we get them by using the ``Symbol''s and ``Type'''s APIs
-- we construct them manually.
+\begin{itemize}
+ \item
+  we get them directly from the \texttt{FastTrack}'s pattern matching.
+ \item
+  we get them by using the \texttt{Symbol} and \texttt{Type} APIs.
+ \item
+  we construct them manually.
+\end{itemize}
 
-Whatever AST is returned from the reify will eventually replace the macro
+Whatever AST is returned from the \texttt{reify} will eventually replace the macro
 application's AST in the first place.
 
-
-Subsection: Handling \texttt{map}'s idiosyncrasies
-
-In contrast to most of the other collections operations, a \texttt{map} operation can
-generate a collection that has the same type constructor as the prefix
+Finally, we should also mention that in contrast to most of the other collections operations, 
+a \texttt{map} operation can generate a collection that has the same type constructor as the prefix
 collection but possibly with a different element type, or even a entirely
 different collection type. As an example of the former case, if f is a function
-from String to Int, and xs is a List[String], then xs \texttt{map} f gives a List[Int].
-Likewise, if ys is an Array[String], then ys \texttt{map} f gives a Array[Int]. As an
-example of the later case,   ``Map("a" -> 1, "b" -> 2) \texttt{map} { case (x, y) => y
-}'' returns List(1, 2) of type scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Iterable[Int],
-which is different from the prefix's Map type. The upstream declosurify project
+from \texttt{String} to \texttt{Int}, and \texttt{xs} is a \sv{List[String]}, then \sv{xs map f} gives a \sv{List[Int]}.
+Likewise, if \texttt{ys} is an \sv{Array[String]}, then \sv{ys map f} gives a \sv{Array[Int]}. As an
+example of the later case,
+
+\begin{scalaCode}
+ Map("a" -> 1, "b" -> 2) map { case (x, y) => y}
+\end{scalaCode}
+
+returns \sv{List(1, 2)} of type \sv{scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Iterable[Int]},
+which is different from the prefix's \texttt{Map} type. The upstream declosurify project
 could handle partially only the first case. \textsc{ft-declosurify} can handle both of
-the cases successfully due to the introduction of the implicit CanBuildFrom
-object, making it more general purpose.
+the cases successfully due to the introduction of the implicit \texttt{CanBuildFrom}
+object, making it a more general purpose transformation tool.
 
 
-Subsection: \texttt{Array}, scala.collection.mutable.ArraysOps  and
-scala.collection.mutable.IndexedSeq Transformation
+\subsection{\texttt{Array}, \sv{scala.collection.mutable.ArraysOps}  and
+\sv{scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}IndexedSeq} Transformation}
 
 scala.Array and all collections that implement the 
 scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}ArrayOps and scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}IndexedSeq
 traits, like scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}ArraySeq,
-% \sv{scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}StringBuilder}, 
-scala . collection . mutable . StringBuilder,
+ \sv{scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}StringBuilder}, 
 scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}ArrayBuffer,
-share the same transformation, since all of them are indexed *mutable*
-sequences. The exact transformation is defined on lines XX-YY. As an example,
-any \texttt{macroMap} applications on \texttt{Array}s like:
+share the same transformation, since all of them are indexed \emph{mutable}
+sequences. The exact transformation is \fxfatal{defined on lines XX-YY}:
 
+\begin{scalaCode}
+def mkMutIndexed[Prefix](prefixTree: Tree): c.Tree = {
+  val prefix   = c.Expr[Prefix](prefixTree)
+  val len      = c.Expr[Int]('xs dot 'length) // might be array or indexedseq
+  val call     = c.Expr[Unit](('buf dot 'update)('i, closure('xs('i))))
+  def mkResult = c.Expr[Nothing](if (isForeach) mkUnit else 'buf)
+
+  val arrCons  =   Apply(Select(New(TypeTree(outCollTpe)), nme.CONSTRUCTOR), List(('xs dot 'length).lhs))
+  val builderVal = c.Expr[Prefix](arrCons)
+  
+  reify {
+    closureDef.splice
+    val xs = prefix.splice
+    var buf = builderVal.splice
+    var i  = 0
+    while (i < len.splice) {
+      call.splice
+      i += 1
+    }
+    mkResult.splice
+  }.tree
+}
+\end{scalaCode}
+
+
+As an example, any \texttt{macroMap} applications on \texttt{Array}s like:
+
+\begin{scalaCode}
 Array(1, 2, 3).macroMap(\_ + 1)
+\end{scalaCode}
 
 will expand to:
 
+\begin{scalaCode}
 {
   def local1(x\$1: Int): Int = x\$1.+(1);
   val xs: Array[Int] = scala.this.Predef.intArrayOps(scala.Array.apply(1,
@@ -435,46 +505,90 @@ scala.this.Predef.wrapIntArray(Array[Int]{2, 3}))).repr();
   };
   buf
 }
+\end{scalaCode}
 
 Exactly the same transformation applies for all the other collections that fall
 into this category. The reasons we chose this transformation path for this
 category are:
-- only this category's collections accept a length in the constructor
-- the length method here takes constant time
-- the element selection through xs.apply(i) takes constant time
-- the update method is supported, since all collections of this category are
+
+\begin{itemize}
+ \item 
+  only this category's collections accept a length in the constructor
+ \item
+  the length method here takes constant time
+ \item
+  the element selection through xs.apply(i) takes constant time
+ \item
+  the update method is supported, since all collections of this category are
 mutable, and takes constant time
+\end{itemize}
 
 Also, all of this category's collections can only be mutated through the
 update method (the assignment operator) on a specific index, with one
-exception, the scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}ArrayBuffer. ArrayBuffer supports
-mutating methods for appending/removing elements which could affect the
+exception, the scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}ArrayBuffer. 
+\texttt{ArrayBuffer} supports mutating methods for appending/removing elements which could affect the
 semantics of \texttt{macroMap} in case we mutate the underlying collection in the
 function we pass in \texttt{macroMap}. Our transformation seems to behave in the same
-way as the default \texttt{map} method. For example both ``buf map {
-x => buf += x; x+1 }'' and ``buf macroMap { x => buf += x;
-x+1 }'' return ArrayBuffer(2, 3, 4). So, we assume the \texttt{macroMap} keeps the
-same semantics on the ArrayBuffer as the original \texttt{map} method.
+way as the default \texttt{map} method. For example both
+
+\begin{scalaCode}
+buf map {x => buf += x; x+1 }
+\end{scalaCode}
+
+and
+
+\begin{scalaCode}
+buf macroMap { x => buf += x; x+1 }
+\end{scalaCode}
+
+return \sv{ArrayBuffer(2, 3, 4)}.
+So, we assume the \texttt{macroMap} keeps the
+same semantics on the \texttt{ArrayBuffer} as the original \texttt{map} method.
 
 In the next chapter will see how much faster this version is compared to the
 default \texttt{map} on \texttt{Array}s.
 
-Subsection: scala.collection.LinearSeq Transformation
+\subsection{\sv{scala.collection.LinearSeq} Transformation}
 
-This category includes scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}List,
-scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Stream, scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Queue,
-scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Stack, scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}MutableList,
-scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}MutableList, scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}LinkedList,
-scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}DoubleLinkedList. All of these collections are linear.
-For example, in this category's transformation we couldn't use the apply (for
-indexing) or the length method because both of them take linear time, instead of
-constant. The transformation is defined on lines XX-YY. As an example, any
-\texttt{macroMap} applications on scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}List like:
+This category includes \sloppy{\sv{scala.\allowbreak{}collection.\allowbreak{}}\{\sv{\allowbreak{}immutable.\allowbreak{}List},
+\sv{\allowbreak{}immutable.\allowbreak{}Stream}, \sv{\allowbreak{}immutable.\allowbreak{}Queue},
+\sv{\allowbreak{}immutable.\allowbreak{}Stack}, \sv{\allowbreak{}mutable.\allowbreak{}MutableList},
+\sv{\allowbreak{}mutable.\allowbreak{}MutableList}, \sv{\allowbreak{}mutable.\allowbreak{}LinkedList},
+\sv{\allowbreak{}mutable.\allowbreak{}DoubleLinkedList}\}}. All of these collections are linear.
+For example, in this category's transformation we couldn't use the \texttt{apply} (for
+indexing) or the \texttt{length} method because both of them take linear time, instead of
+constant. The transformation is: \fxfatal{defined on lines XX-YY}.
 
+\begin{scalaCode}
+ def mkLinear(prefixTree: Tree): c.Tree = {
+  val prefix    = c.Expr[Lin[A]](prefixTree)
+  val call = mkCall('these dot 'head)
+
+  reify {
+    closureDef.splice
+    builderDef.splice
+    builderVal.splice
+    var these = prefix.splice
+    while (!these.isEmpty) {
+      call.splice
+      these = these.tail
+    }
+    mkResult.splice
+  }.tree
+}
+\end{scalaCode}
+
+
+As an example, any
+\texttt{macroMap} applications on \sv{scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}List} like:
+
+\begin{scalaCode}
 List(1, 2, 3).macroMap(\_ + 1)
+\end{scalaCode}
 
 will be replaced from:
 
+\begin{scalaCode}
 {
   private def local1(x\$1: Int): Int = x\$1.+(1);
   private def builder1: scala.collection.mutable.Builder[Int,List[Int]] = {
@@ -491,29 +605,59 @@ immutable.this.List.canBuildFrom[Int].apply();
   };
   buf.result
 }
+\end{scalaCode}
 
 This category uses this transformation because:
-- isEmpty takes constant time
-- head takes constant time
-- tail takes constant time
+\begin{itemize}
+ \item
+  \texttt{isEmpty} takes constant time
+ \item
+  \texttt{head} takes constant time
+ \item
+  \texttt{tail} takes constant time
+\end{itemize}
 
 In the next chapter will see how much faster this version is compared to the
 default \texttt{map} on \texttt{List}s.
 
-Subsection: scala.collection.Traversable Transformation
+\subsection{\sv{scala.collection.Traversable} Transformation}
 
 This category includes all colletions that don't fit in any of the previous
-categories. Roughly it includes all kinds of Sets, Maps, Buffers and
-immutable.IndexedSeqs. Obviously, since it includes such a broad range of
+categories. Roughly it includes all kinds of \texttt{Set}s, \texttt{Map}s, \texttt{Buffer}s and
+\sv{immutable.IndexedSeq}s. Obviously, since it includes such a broad range of
 collections we are allowed to use only methods that are supported from all
-collections, meaning we cannot use the length, apply, head, tail methods of the
-previous transformations. The transformation is defined on lines XX-YY. As an
-example, any \texttt{macroMap} applications on scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Set like:
+collections, meaning we cannot use the \texttt{length}, \texttt{apply}, \texttt{head}, \texttt{tail} methods of the
+previous transformations. The transformation is: \fxfatal{defined on lines XX-YY}
 
+\begin{scalaCode}
+ def mkTraversable(prefixTree: Tree): c.Tree = {
+  val prefix = c.Expr[Traversable[A]](prefixTree)
+  val call   = mkCall('it dot 'next)
+
+  reify {
+    closureDef.splice
+    builderDef.splice
+    builderVal.splice
+    val it = prefix.splice.toIterator
+    while (it.hasNext)
+      call.splice
+
+    mkResult.splice
+  }.tree
+}
+\end{scalaCode}
+
+
+As an
+example, any \texttt{macroMap} applications on \sv{scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Set} like:
+
+\begin{scalaCode}
 Set(1, 2, 3).macroMap(\_ + 1)
+\end{scalaCode}
 
 will expand to:
 
+\begin{scalaCode}
 {
   private def local1(x\$1: Int): Int = x\$1.+(1);
   private def builder1:
@@ -531,15 +675,16 @@ immutable.this.Set.canBuildFrom[Int].apply();
   };
   buf.result
 }
+\end{scalaCode}
 
 
-Here, we use the iterator method to generate a prefix's iterator object. All
+Here, we use the \texttt{iterator} method to generate a prefix's iterator object. All
 collections have an toIterator method since all of them implement the
-scala.\allowbreak{}collection.\allowbreak{}Iterable trait. Each collection implements it using its
-scala.\allowbreak{}collection.\allowbreak{}Traversable's \texttt{foreach} method, which is implemented according to
+\sv{scala.\allowbreak{}collection.\allowbreak{}Iterable} trait. Each collection implements it using its
+\sv{scala.\allowbreak{}collection.\allowbreak{}Traversable}'s \texttt{foreach} method, which is implemented according to
 each collection's special characteristics in order to be more efficient.
 
-For the collections that implement the immutable.IndexedSeq trait, like Vector,
+For the collections that implement the \sv{immutable.IndexedSeq} trait, like \texttt{Vector},
 we could have used a modified version of the mutable indexed sequences
 transformation where we would use a builder object to build the target
 collection, since we cannot mutate it in place. Interestingly, our experiments

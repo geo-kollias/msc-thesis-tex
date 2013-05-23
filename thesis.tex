@@ -27,7 +27,7 @@
 \usepackage{multirow}
 \usepackage{subfig}
 \usepackage[draft]{fixme}
-\usepackage[colorinlistoftodos]{todonotes}
+% \usepackage[colorinlistoftodos]{todonotes}
 % \usepackage{hyphenat}
 
 \cftsetpnumwidth{2em} %fixes spacing problem for tables / figures # >= .10 
@@ -495,7 +495,7 @@ escapechar={\%},
 \listoffixmes
 \thispagestyle{empty}
 \clearpage\newpage%\mbox{}\newpage
-\listoftodos
+% \listoftodos
 \thispagestyle{empty}
 \clearpage\newpage%\mbox{}\newpage
 
@@ -539,26 +539,10 @@ escapechar={\%},
 % ft_declosurify.tex: file with chapter contents
 \input{chapters/ft_declosurify}
 
-\chapter[Safe Publication]{Safe Publication}
-% publication.tex: file with chapter contents
-\input{chapters/publication}
-
-
-%% \chapter[Dominance]{Dominance}
-%% % dominance.tex: file with chapter contents
-%% \input{chapters/dominance}
-
-%% \chapter[Adding Context-Sensitivity]{Adding Context-Sensitivity}
-%% % context.tex: file with chapter contents
-%% \input{chapters/context}
-
-%% \chapter[Dominance Revisited: Introducing Context]{Dominance Revisited: \mbox{Introducing Context}}
-%% % dom-context.tex: file with chapter contents
-%% \input{chapters/dom-context}
 
 \chapter[Experimental Results]{Experimental Results}
 % experiments.tex: file with chapter contents
-\input{chapters/experiments}
+\input{chapters/benchmarks}
 
 \chapter[Related Work]{Related Work}
 % related.tex: file with chapter contents
@@ -724,7 +708,7 @@ escapechar={\%},
 
 \appendix
 \addcontentsline{toc}{chapter}{Appendices}
-\chapter{Escape Analysis Code}
+\chapter{\texttt{mapInfix} Code???}
 % code.tex: file with chapter contents
 \input{chapters/code}
 

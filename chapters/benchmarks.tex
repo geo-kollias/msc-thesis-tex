@@ -45,18 +45,18 @@ after scalac's erasure phase, a scala.Int will become either a int or a
 java.lang.Integer. For example, in our benchmarks, the closure function will
 become a local method like:
 
-def local1$1(x$1: int): int = x$1.+(1);
+def local1\$1(x\$1: int): int = x\$1.+(1);
 
 This method deals solely with Java's primitive integers under the hood. On the
 other hand operations on ArraySeq, List and most of the collections except
 Array, deal with java.lang.Integer. So, for example, in an ArraySeq
 transformation the target collection is constructed like this:
 
-buf.update(i, scala.Int.box(local1$1(scala.Int.unbox(xs.apply(i))
+buf.update(i, scala.Int.box(local1\$1(scala.Int.unbox(xs.apply(i))
 
 while on Arrays we have:
 
-buf.update(i, local1$1(xs.apply(i)))
+buf.update(i, local1\$1(xs.apply(i)))
 
 This is due the way Arrays are constructed. In particular, when we ask for an
 Array[scala.Int] in Scala, the compiler inspects it and creates an
@@ -65,7 +65,7 @@ primitive integers. We can see that avoiding the boxing/unboxing operations can
 give us a huge performance boost. For that reason, Scala already provides the
 @specialized annotation [cite] for creating specialized classes/collections and,
 more generally, specialization is a hot research topic in the Scala ecosystem
-[cite miniboxing & I.Dragos' PhD].
+[cite miniboxing and I.Dragos' PhD].
 
 Array
 
