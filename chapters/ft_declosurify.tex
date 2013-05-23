@@ -561,8 +561,8 @@ constant. The transformation is: \fxfatal{defined on lines XX-YY}.
 
 \begin{scalaCode}
  def mkLinear(prefixTree: Tree): c.Tree = {
-  val prefix    = c.Expr[Lin[A]](prefixTree)
-  val call = mkCall('these dot 'head)
+  val prefix = c.Expr[Lin[A]](prefixTree)
+  val call   = mkCall('these dot 'head)
 
   reify {
     closureDef.splice
