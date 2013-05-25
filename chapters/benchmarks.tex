@@ -165,8 +165,9 @@ representative of the linear sequences category, i.e., subtypes of \sv{scala.\al
 
 In Figure~\ref{fig:trav_benchs}, we see the benchmark results for
 \sv{scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Set} and \sv{scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Vector},
-representatives of the general category of traversables, i.e., subtypes of \texttt{Traversable}, which includes all
-collections.
+representatives of the general category of traversables, i.e., subtypes of \texttt{Traversable}, which includes all collections.
+
+Finally, Table~\ref{all_bench_speedups} includes all benchmarks and their associated speedups.
 
 \begin{figure}
   \centering
@@ -221,3 +222,56 @@ collections.
 % Parameters(size -> 1300000): 16.92755692
 % Parameters(size -> 1500000): 19.05916
 
+\begin{table}
+\centering
+\scalebox{0.8}{
+\begin{tabular} {|c|c|l|r|r|r|r|r|r|}
+\cline{4-9}
+\multicolumn{3}{c}{} & \multicolumn{6}{|c|}{Collection Sizes}\\
+\hline
+Transformation Category & Collection & Method & 500K & 700K & 900K & 1.1M & 1.3M & 1.5M\\
+\hline
+% \multirow{6}{*}{\rotatebox{90}{mut. ind. seq. }}
+\multirow{6}{*}{Mutable Indexed Seq.}
+& \multirow{3}{*}{ArraySeq} & map & $07.63$ & $11.02$ & $13.06$ & $16.71$ & $19.28$ & $22.42$\\
+\cline{3-9}
+& & macroMap & $03.46$ & $04.75$ & $06.06$ & $07.42$ & $08.67$ & $09.92$\\
+\cline{3-9}
+& & \emph{speedup} & $54.65\%$ & $56.89\%$ & $53.59\%$ & $55.59\%$ & $55.03\%$ & $55.75\%$\\
+\cline{2-9}
+
+& \multirow{3}{*}{Array} & map & $04.46$ & $06.30$ & $08.08$ & $09. 79$ & $11.55$ & $13.34$\\
+\cline{3-9}
+& & macroMap & $00.56$ & $00.71$ & $00.96$ & $01.21$ & $01.47$ & $01.74$\\
+\cline{3-9}
+& & \emph{speedup} & $87.44\%$ & $88.73\%$ & $88.11\%$ & $87.64\%$ & $87.27\%$ & $86.95\%$\\
+\hline
+
+\multirow{3}{*}{Linear Seq.}
+& \multirow{3}{*}{List} & map & $08.49$ & $12.17$ & $14.76$ & $17.83$ & $20.58$ & $23.08$\\
+\cline{3-9}
+& & macroMap & $06.26$ & $08.49$ & $10.80$ & $12.77$ & $15.41$ & $16.79$\\
+\cline{3-9}
+& & \emph{speedup} & $26.27\%$ & $30.24\%$ & $26.83\%$ & $28.37\%$ & $25.12\%$ & $27.25\%$\\
+\hline
+
+\multirow{6}{*}{Traversable}
+& \multirow{3}{*}{Set} & map & $225.10$ & $428.75$ & $552.36$ & $783.19$ & $1021.15$ & $1256.04$\\
+\cline{3-9}
+& & macroMap & $221.50$ & $404.77$ & $517.20$ & $780.34$ & $980.57$ & $1196.13$\\
+\cline{3-9}
+& & \emph{speedup} & $01.60\%$ & $05.60\%$ & $06.37\%$ & $00.36\%$ & $03.40\%$ & $04.77\%$\\
+\cline{2-9}
+
+& \multirow{3}{*}{Vector} & map & $07.80$ & $09.82$ & $12.20$ & $14.64$ & $16.93$ & $19.06$\\
+\cline{3-9}
+& & macroMap & $04.35$ & $06.97$ & $09.13$ & $11.80$ & $13.05$ & $15.43$\\
+\cline{3-9}
+& & \emph{speedup} & $44.23\%$ & $29.02\%$ & $25.16\%$ & $19.39\%$ & $22.92\%$ & $19.05\%$\\
+\hline
+
+\end{tabular}
+}
+\caption[Collections Benchmarks and Speedups]{Collections Benchmarks and Speedups}
+\label{all_bench_speedups}
+\end{table}
