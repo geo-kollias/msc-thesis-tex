@@ -3,7 +3,7 @@ This chapter will introduce our work and the problem it tries to attack. It is a
 real-world hard problem that affects the whole Java Virtual Machine (JVM) \fxfatal{add abbr}
 ecosystem.
 
-In ``Fixing The Inlining Problem'' \fxfatal{cite}, Cliff Click describes an issue
+In ``Fixing The Inlining Problem''~\cite{cliffc:TheProblem}, Cliff Click describes an issue
 that has emerged the last few years in the JVM ecosystem:
 
 ``\emph{The Problem} is simply this: new languages on the JVM (e.g., JRuby) and new
@@ -95,7 +95,7 @@ coding styles.
 Scala, as most of the modern JVM languages, is no exception and it suffers from
 The Problem too and, actually, it affects its adoption negatively. At the end of
 2011, an email from a \textsc{Yammer} employee towards the CEO of \textsc{TypeSafe}, the company
-backing the Scala ecosystem, about Scala shortcomings, leaked to the public\fxfatal{cite http://www.infoq.com/news/2011/11/yammer-scala}. Most technical issues were
+backing the Scala ecosystem, about Scala shortcomings, leaked to the public~\cite{infoq:Yammer}. Most technical issues were
 related with The Problem and, more specifically, with the Scala standard
 library collections' performance. 
 
@@ -103,7 +103,7 @@ In the next chapters we will see where exactly the problem lies and how
 our project can help us alleviate it. We have named our project
 \textsc{ft-declosurify}; the \emph{ft} prefix stands for Scala compiler's FastTrack
 mechanism, as we will see in Chapter~\ref{ft_declosurify}, and the \emph{declosurify} suffix suggests that
-the implementation is based on Paul Phillips's original \textsc{declosurify} project\fxfatal{cite github url}. 
+the implementation is based on Paul Phillips's original \textsc{declosurify} project~\cite{paulp:declosurify}. 
 
 ft-declosurify defines two methods, \texttt{macroMap} and \texttt{macroForeach}, that can be used
 from all the Scala standard libary collections. They offer the same

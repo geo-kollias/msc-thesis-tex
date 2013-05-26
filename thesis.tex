@@ -27,6 +27,7 @@
 \usepackage{multirow}
 \usepackage{subfig}
 \usepackage[draft]{fixme}
+\usepackage{natbib}
 % \usepackage[colorinlistoftodos]{todonotes}
 % \usepackage{hyphenat}
 
@@ -712,14 +713,15 @@ escapechar={\%},
 % code.tex: file with chapter contents
 \input{chapters/code}
 
-% \providecommand{\noopsort}[1]{}
-% \bibliographystyle{plain}
-% \chapter*{References}
-% \addcontentsline{toc}{chapter}{\lt References}
-% \lt
-% {  \renewcommand{\chapter}[1]{}
-%    \renewcommand{\bibname}{}
-%    \bibliography{mybiblio}
-% }
+\providecommand{\noopsort}[1]{}
+\bibliographystyle{plain}
+% \bibliographystyle{plainnat}
+\chapter*{References}
+\addcontentsline{toc}{chapter}{\lt References}
+\lt
+{  \renewcommand{\chapter}[1]{}
+   \renewcommand{\bibname}{}
+   \bibliography{mybiblio}
+}
 
 \end{document}
