@@ -8,7 +8,7 @@ the speedups.
 
 \section{Setup}
 
-We used the ScalaMeter \fxfatal{cite} microbenchmarking and performance regression
+We used the ScalaMeter~\cite{axel22:scalameter} microbenchmarking and performance regression
 testing framework for the JVM platform. We use the same benchmark template for
 all the different categories. The code for the Array benchmarking is in Appendix X
 \fxfatal{appendix}. In short, each benchmark compares the \texttt{macroMap}'s speed against \texttt{map}'s speed
@@ -92,9 +92,9 @@ This is due the way \texttt{Array}s are constructed. In particular, when we ask 
 \sv{Array[int]} automatically and, as a consequence, all of its methods operate upon
 primitive integers. We can see that avoiding the boxing/unboxing operations can
 give us a huge performance boost. For that reason, Scala already provides the
-\texttt{@specialized} annotation \fxfatal{cite} for creating specialized classes/collections and,
-more generally, specialization is a hot research topic in the Scala ecosystem
-\fxfatal{cite miniboxing and I.Dragos' PhD}.
+\texttt{@specialized} annotation for creating specialized classes/collections and,
+more generally, specialization is a hot research topic in the Scala ecosystem~\cite{dragos2010compiling}
+\fxfatal{cite miniboxing}.
 
 % Array
 % 

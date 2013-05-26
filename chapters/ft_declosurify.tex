@@ -219,7 +219,7 @@ will usually be generated and passed by the compiler automatically.
 The upstream \textsc{declosurify} project can be used as a library adding the -extension-
 methods \texttt{macroMap} and \texttt{macroForeach} on all Scala collections that implement the
 \sv{scala.\allowbreak{}collection.\allowbreak{}TraversableOnce} trait and \texttt{Array}s, through Scala's implicit
-conversions\fxfatal{cite implicit conversions}. Since, ultimately, we would like to
+conversions~\cite{oliveira_type_2010}. Since, ultimately, we would like to
 substitute the default \texttt{map} and \texttt{foreach} methods with the \texttt{macroMap} and
 \texttt{macroForeach} implementations respectively, we had to move the definitions
 of \texttt{macroMap}, \texttt{macroForeach} inside the Scala standard library. The Scala standard
@@ -255,7 +255,7 @@ subsection.
 Regular Scala macros implementations can be generic in the sense that they can
 be customized with type parameters as any regular Scala method. On top of that,
 the Scala compiler allows us to ``tag'' each of these type parameters with
-special compiler-generated objects, of type (\texttt{Weak})\texttt{TypeTag}\fxfatal{cite}, that store the
+special compiler-generated objects, of type (\texttt{Weak})\texttt{TypeTag}\cite{oliveira_type_2010}, that store the
 type parameters' full types on each call and make them available at runtime. In
 short, it's Scala's solution against JVM's type erasure. This machinery is
 especially useful for macros, since we can inspect these \texttt{TypeTag} objects and
@@ -305,11 +305,11 @@ next four arguments are:
   \texttt{outCollTpe}: the internal compiler type of the collection our \texttt{macroMap} is going
 to return
  \item
-  \texttt{bfTree}: the AST of the implicit \sv{scala.\allowbreak{}collection.\allowbreak{}generic.CanBuildFrom} \fxfatal{cite adrian moors phd} object that got
+  \texttt{bfTree}: the AST of the implicit \sv{scala.\allowbreak{}collection.\allowbreak{}generic.CanBuildFrom} object that got
 inserted by the compiler at the \texttt{macroMap} call-site. This provides us with an
 easy and accurate way to create the appropriate builder for the generated
 collection taking full advantage of all the existing implicit \texttt{CanBuildFrom} objects
-that are declared in the standard library.
+that are declared in the standard library~\cite{moors2009type} .
 \end{itemize}
 
 It's easy to observe that all of second parameter list types are prepended
