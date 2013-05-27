@@ -1,7 +1,6 @@
 \label{introduction}
 This chapter will introduce our work and the problem it tries to attack. It is a
-real-world hard problem that affects the whole Java Virtual Machine (JVM) \fxfatal{add abbr}
-ecosystem.
+real-world hard problem that affects the whole Java Virtual Machine (JVM) ecosystem.
 
 In ``Fixing The Inlining Problem''~\cite{cliffc:TheProblem}, Cliff Click describes an issue
 that has emerged the last few years in the JVM ecosystem:
@@ -106,7 +105,7 @@ mechanism, as we will see in Chapter~\ref{ft_declosurify}, and the \emph{declosu
 the implementation is based on Paul Phillips's original \textsc{declosurify} project~\cite{paulp:declosurify}. 
 
 ft-declosurify defines two methods, \texttt{macroMap} and \texttt{macroForeach}, that can be used
-from all the Scala standard libary collections. They offer the same
+from all the Scala standard library collections. They offer the same
 functionality as their Scala standard library counterparts, \texttt{map} and \texttt{foreach}
 methods, but they are much faster because they suffer much less from The
 Problem. In most cases, \texttt{macroMap}/\texttt{macroForeach} can be considered as faster and

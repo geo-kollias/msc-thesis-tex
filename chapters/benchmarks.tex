@@ -26,9 +26,9 @@ we have tweaked the benchmark template with the following parameters:
   each measurement of \texttt{map}/\texttt{macroMap} on a specific collection size is run 25
 times successively
  \item
-  the 25 measurents are divided on 5 separate JVM instances
+  the 25 measurements are divided on 5 separate JVM instances
  \item
-  every 2 measurements the current collection is reinstantiated
+  every 2 measurements the current collection is re-instantiated
  \item
   every 2 measurements a full GC cycle is forced
 \end{itemize}
@@ -93,8 +93,7 @@ This is due the way \texttt{Array}s are constructed. In particular, when we ask 
 primitive integers. We can see that avoiding the boxing/unboxing operations can
 give us a huge performance boost. For that reason, Scala already provides the
 \texttt{@specialized} annotation for creating specialized classes/collections and,
-more generally, specialization is a hot research topic in the Scala ecosystem~\cite{dragos2010compiling}
-\fxfatal{cite miniboxing}.
+more generally, specialization is a hot research topic in the Scala ecosystem~\cite{dragos2010compiling,ureche2013miniboxing}.
 
 % Array
 % 

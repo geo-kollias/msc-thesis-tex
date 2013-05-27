@@ -117,7 +117,7 @@ traversal is over, we call the builder's result method which returns the full
 target collection we want (a \texttt{List} in this example).
 
 In \texttt{macroMap}'s transformation, we see that there is no explicit call to any 
-\texttt{map} method. Instead, the list's traveral happens directly within a while loop 
+\texttt{map} method. Instead, the list's traversal happens directly within a while loop 
 where the \texttt{local1} local free method is applied to all of the list's elements. 
 The \texttt{local1} method is called a free method since it's not directly attached to any class or object.
 During scalac's ``flatten'' phase, it will be lifted and become a method of
@@ -152,7 +152,7 @@ like:
 }
 \end{scalaCode}
 
-Initally, it seems that we fall back to The Problem again, without having any
+Initially, it seems that we fall back to The Problem again, without having any
 advantage, since \sv{myf.apply} seems to be a megamorphic virtual call again.
 But, in a program, all \texttt{macroMap} instances will be expanded at the call-site and their myf's
 runtime type will, usually, remain the same during each call and, theoretically,
@@ -205,9 +205,9 @@ and \texttt{That} is the generated collection's type. Also, as we said, \texttt{
 curried method. The first parameter list accepts the operation's function. The
 second list gets an implicit \texttt{CanBuildFrom} object. \texttt{CanBuildFrom} objects are
 builder factories which generate the appropriate
-\sv{scala.\allowbreak{}collection.\allowbreak{}generic.Builder} objects depeding on their type parameters.
+\sv{scala.\allowbreak{}collection.\allowbreak{}generic.Builder} objects depending on their type parameters.
 Generally, builders makes the creation of a new collection out of existing ones
-easier and more maintable. For example, a \sv{CanBuildFrom[\allowbreak{}List[\allowbreak{}String], Int,
+easier and more maintainable. For example, a \sv{CanBuildFrom[\allowbreak{}List[\allowbreak{}String], Int,
 Array[Int]]} object will create a \sv{Builder[Int, Array[Int]]} object which can
 create an \texttt{Array} of integers out of a \texttt{List} of strings. Since \texttt{bf} is implicit, it
 will usually be generated and passed by the compiler automatically.
@@ -235,8 +235,8 @@ macro that uses this mechanism is the \texttt{reify} function itself that we saw
 previous chapter. The \texttt{FastTrack} module uses a registry where one links
 methods' compiler \texttt{Symbol}s with special handler methods. For example, whenever
 the compiler sees a \texttt{Symbol} representing an application of \texttt{reify}, it calls its
-respective \texttt{FastTrack} special handler which has access to the reify appication's
-call-site context and all of  its arguments' Abstract Syntax Trees (ASTs)\fxfatal{abbr},
+respective \texttt{FastTrack} special handler which has access to the reify application's
+call-site context and all of  its arguments' Abstract Syntax Trees (ASTs),
 through pattern matching. The call-site context object, generally, holds
 call-site information like the macro application's enclosing method, its
 enclosing class, its line in the file. The ASTs contain the internal
@@ -314,7 +314,7 @@ that are declared in the standard library~\cite{moors2009type} .
 
 It's easy to observe that all of second parameter list types are prepended
 with the context object \texttt{c0}. This qualified notation realizes the notion of
-Scala's path-depedent types. For example, here we choose the \texttt{Expr} that is
+Scala's path-dependent types. For example, here we choose the \texttt{Expr} that is
 defined inside the \texttt{c0} object. Generally, if we have two different objects \texttt{c0} and
 \texttt{c1} of the same type which include an inner type \texttt{MyType}, e.g., through type
 member or inner class,  then \sv{c0.MyType} is a different type from \sv{c1.MyType} in
@@ -399,7 +399,7 @@ prefixes. We will check them in the following subsections, but all of them gener
 similar code with the original Scala \texttt{map} implementation, although they use 
 more low-level constructs.
 
-The reasons we need differrent implementations for different kinds of
+The reasons we need different implementations for different kinds of
 prefixes and target collections are:
 
 \begin{itemize}
@@ -483,7 +483,7 @@ def mkMutIndexed[Prefix](prefixTree: Tree): c.Tree = {
   }.tree
 }
 \end{scalaCode}
-\caption[Mutable indexed sequences tranformation code]{Mutable indexed sequences tranformation code}
+\caption[Mutable indexed sequences transformation code]{Mutable indexed sequences transformation code}
 \label{mut_ind_transf}
 \end{figure}
 
@@ -579,7 +579,7 @@ constant. The transformation is in Figure~\ref{lin_transf} \fxfatal{defined on l
   }.tree
 }
 \end{scalaCode}
-\caption[Linear sequences tranformation code]{Linear sequences tranformation code}
+\caption[Linear sequences transformation code]{Linear sequences transformation code}
 \label{lin_transf}
 \end{figure}
 
@@ -629,7 +629,7 @@ default \texttt{map} on \texttt{List}s.
 
 \subsection{\texttt{scala.collection.Traversable} Transformation}
 
-This category includes all colletions that don't fit in any of the previous
+This category includes all collections that don't fit in any of the previous
 categories. Roughly, it includes all kinds of \texttt{Set}s, \texttt{Map}s, \texttt{Buffer}s and
 \sv{immutable.IndexedSeq}s. Obviously, since it includes such a broad range of
 collections we are allowed to use only methods that are supported from all the
@@ -654,7 +654,7 @@ previous transformations. The transformation is in Figure~\ref{trav_transf} \fxf
   }.tree
 }
 \end{scalaCode}
-\caption[Traversable sequences tranformation code]{Traversable sequences tranformation code}
+\caption[Traversable sequences transformation code]{Traversable sequences transformation code}
 \label{trav_transf}
 \end{figure}
 

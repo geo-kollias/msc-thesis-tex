@@ -86,7 +86,7 @@ techniques as~cite{burmako2012scala}:
 \begin{itemize}
   \item
     Language virtualization (overloading/overriding semantics of the original
-    programming language to enable deep embedding of DSLs)
+    programming language to enable deep embedding of \emph{Domain Specific Language}s (DSLs))
   \item
     Program reification (providing programs with means to inspect their own code)
   \item
@@ -111,7 +111,7 @@ without using macro defs explicitly. In the next chapter we will see how we
 achieve it.
 
 Compile-time reflection allows us to create new and/or manipulate
-existing abstract-syntax trees (ASTs) \fxfatal{abbr} during the compiler's typechecking phase.
+existing Abstract Syntax Trees (ASTs) during the compiler's typechecking phase.
 All the new or changed ASTs are re-typechecked, guaranteeing us type-safe
 transformations. scalac represents ASTs with objects of type
 \sv{scala.reflect.api.Tree} or \sv{scala.reflect.api.Exprs}, which is just a typed-wrapper
