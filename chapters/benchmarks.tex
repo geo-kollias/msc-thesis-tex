@@ -10,8 +10,7 @@ the speedups.
 
 We used the ScalaMeter~\cite{axel22:scalameter} microbenchmarking and performance regression
 testing framework for the JVM platform. We use the same benchmark template for
-all the different categories. The code for the Array benchmarking is in Appendix X
-\fxfatal{appendix}. In short, each benchmark compares the \texttt{macroMap}'s speed against \texttt{map}'s speed
+all the different categories. In short, each benchmark compares the \texttt{macroMap}'s speed against \texttt{map}'s speed
 on different sizes of the same collection applying the same closure, the
 successor function.
 
@@ -37,9 +36,9 @@ times successively
 \section{Evaluation}
 
 In Figure~\ref{fig:mut_ind_benchs} we see the benchmark results for \sv{scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}ArraySeq} 
-and \texttt{Array} respectively, as representatives of the mutable indexed
+and \texttt{Array}, as representatives of the mutable indexed
 sequences category, i.e., subtypes of \sv{scala.\allowbreak{}collection.\allowbreak{}mutable.\allowbreak{}IndexedSeq} and
-\texttt{Array}.
+\texttt{Array}, where we achieve average $55\%$ and $88\%$ speedups, respectively.
 
 \begin{figure}
   \centering
@@ -93,7 +92,7 @@ This is due the way \texttt{Array}s are constructed. In particular, when we ask 
 primitive integers. We can see that avoiding the boxing/unboxing operations can
 give us a huge performance boost. For that reason, Scala already provides the
 \texttt{@specialized} annotation for creating specialized classes/collections and,
-more generally, specialization is a hot research topic in the Scala ecosystem~\cite{dragos2010compiling,ureche2013miniboxing}.
+more generally, specialization is a hot research topic in the Scala community~\cite{dragos2010compiling,ureche2013miniboxing}.
 
 % Array
 % 
@@ -134,11 +133,11 @@ more generally, specialization is a hot research topic in the Scala ecosystem~\c
 
 
 In Figure~\ref{fig:lin_bench} we see the benchmark results for \sv{scala.collection.immutable.List},
-representative of the linear sequences category, i.e., subtypes of \sv{scala.\allowbreak{}collection.\allowbreak{}LinearSeq}.
+representative of the linear sequences category, i.e., subtypes of \sv{scala.\allowbreak{}collection.\allowbreak{}LinearSeq}, where we achieve an average $28\%$ speedup.
 
 \begin{figure}
 \centering
-\includegraphics[scale=0.7]{figures/arrayseq_bench.eps}
+\includegraphics[scale=0.7]{figures/list_bench.eps}
 \caption[\texttt{List} benchmark]{\texttt{List} benchmark}
 \label{fig:lin_bench}
 \end{figure}
@@ -164,7 +163,7 @@ representative of the linear sequences category, i.e., subtypes of \sv{scala.\al
 
 In Figure~\ref{fig:trav_benchs}, we see the benchmark results for
 \sv{scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Set} and \sv{scala.\allowbreak{}collection.\allowbreak{}immutable.\allowbreak{}Vector},
-representatives of the general category of traversables, i.e., subtypes of \texttt{Traversable}, which includes all collections.
+representatives of the general category of traversables, i.e., subtypes of \texttt{Traversable}, where we achieve average $5\%$ and $25\%$ speedups, respectively.
 
 Finally, Table~\ref{all_bench_speedups} includes all benchmarks' exact times and their associated speedups.
 

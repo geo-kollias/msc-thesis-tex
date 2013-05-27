@@ -5,7 +5,7 @@ By using the Scala 2.10 compile-time reflection APIs we were able to add the \te
 Even if the \texttt{macroMap}/\texttt{macroForeach} iterators aren't particularly big or complex, this trade off's code duplication can blow out CPU's instruction cache in programs which use these methods heavily, affecting the performance negatively. Also, applying these transformations statically and eagerly at compile-time, lead us to a few more problems:
 
 \begin{itemize}
- \item We cannot override a collection's \texttt{macroMap}/\texttt{macroForeach} methods, violating that way Liskov's Substitution Principle~\cite{liskov1994behavioral}.
+ \item We cannot override a collection's \texttt{macroMap}/\texttt{macroForeach} methods, violating that way the Liskov's Substitution Principle~\cite{liskov1994behavioral}.
  \item In code like \sv{Traversable[Int] tr = List(1,2,3); tr.macroMap(\_+1)}, \texttt{macroMap} will expand according to \texttt{tr}'s static type, so it won't expand to the most performant alternative.
 \end{itemize}
 

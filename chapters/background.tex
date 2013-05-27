@@ -72,7 +72,7 @@ programming languages and, currently, it can only be found in more exotic
  Compile-time reflection enabled the introduction of an experimental version of type-safe
  syntactic macros~\cite{burmako2012scala}. 
 
-Syntactic macro systems work at the level of abstract syntax trees and preserve
+Syntactic macro systems work at the level of Abstract Syntax Trees (ASTs) and preserve
 the lexical structure of the original program. Macro systems that work at the
 level of lexical tokens, like the C preprocessor, cannot preserve the
 lexical structure reliably. The most widely used implementations of syntactic
@@ -80,8 +80,8 @@ macro systems are found in Lisp-like languages such as Common Lisp, Scheme.
 These languages are especially suited for this style of macro due to their uniform,
 parenthesized syntax (known as S-expressions).
 
-Compile-time metaprogramming is a valuable tool for enabling such programming
-techniques as~cite{burmako2012scala}:
+According to~\cite{burmako2012scala}, compile-time metaprogramming is a valuable tool for enabling such programming
+techniques as:
 
 \begin{itemize}
   \item
@@ -111,7 +111,7 @@ without using macro defs explicitly. In the next chapter we will see how we
 achieve it.
 
 Compile-time reflection allows us to create new and/or manipulate
-existing Abstract Syntax Trees (ASTs) during the compiler's typechecking phase.
+existing ASTs during the compiler's typechecking phase.
 All the new or changed ASTs are re-typechecked, guaranteeing us type-safe
 transformations. scalac represents ASTs with objects of type
 \sv{scala.reflect.api.Tree} or \sv{scala.reflect.api.Exprs}, which is just a typed-wrapper
@@ -120,7 +120,7 @@ inspect or change the compiler's \sv{scala.reflect.api.Symbol} and
 \sv{scala.reflect.api.Type} objects that are related with these ASTs.
 
 For example, we can create the AST of the Scala expression \sv{x < 10} manually,
-either with a macro or directly within scalac, with this code
+either with a macro or directly within scalac, with this code:
 \sv{Apply(Select(Ident(newTermName("x")), newTermName("\$less"),
 List(Literal(Constant(10)))))}. \texttt{Apply}, \texttt{Select}, \texttt{Ident}, \texttt{Literal},
 \texttt{Constant} are AST objects themselves of \sv{scala.reflect.api.Tree} type.
@@ -144,7 +144,7 @@ def reify[T](expr : T): Expr[T] = macro . . .
 
 Reify accepts a single parameter expr, which can be any well-typed Scala
 expression, and creates a tree that, when compiled and evaluated, will recreate
-the original tree expr. So \texttt{reify} is like time-travel: trees get re-constituted
+the original tree \texttt{expr}. So \texttt{reify} is like time-travel: trees get re-constituted
 at a later stage. If \texttt{reify} is called from normal compiled code, its effect is
 that the AST passed to it will be recreated at run time.
 Consequently, if \texttt{reify} is called from a macro implementation or a method inside
@@ -170,7 +170,7 @@ and unhygienic, but that simple form is expressive enough to formulate a
 concise and hygienic.
 
 Another important compile-time metaprogramming operation is the \emph{splicing},
-which could be described as \texttt{reify}'s inverse operation. Using \texttt{Expr}'s splice
+which could be described as \texttt{reify}'s inverse operation. Using \texttt{Expr}'s \texttt{splice}
 method we can inject an existing AST inside a \texttt{reify}'s body.
 
 Reification and splicing operations are crucial to our implementation, as we
