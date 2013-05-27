@@ -489,7 +489,7 @@ def mkMutIndexed[Prefix](prefixTree: Tree): c.Tree = {
 
 As an example, any \texttt{macroMap} applications on \texttt{Array}s like:
 \begin{scalaCode}
-Array(1, 2, 3).macroMap(\_ + 1)
+Array(1, 2, 3).macroMap(_ + 1)
 \end{scalaCode}
 will expand to Figure~\ref{array_expansion}'s code.
 
@@ -669,7 +669,7 @@ will expand to Figure~\ref{set_expansion}'s code.
 \begin{figure}
 \begin{scalaCode}
 {
-  private def local1(x\$1: Int): Int = x\$1.+(1);
+  private def local1(x$1: Int): Int = x$1.+(1);
   private def builder1:
 scala.collection.mutable.Builder[Int,scala.collection.immutable.Set[Int]] = {
     val b:
