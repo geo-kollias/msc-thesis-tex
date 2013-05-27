@@ -1,11 +1,11 @@
 \label{conclusions}
 
-By using the Scala 2.10 compile-time reflection APIs we were able to add the \texttt{macroMap}/\texttt{macroForeach} methods to the Scala standard library and make them about $40\%$ faster than the default \texttt{map}/\texttt{foreach} methods, at average. That performance improvement is, in part, due to our choice to trade off the implicitly and programmatically duplicated code at the call site for the reduction of the megamorphic virtual calls, alleviating that way one part of The Problem.
+By using the Scala 2.10 compile-time reflection APIs we were able to add the \texttt{macroMap}/\texttt{macroForeach} methods to the Scala standard library and make them about $40\%$ faster than the default \texttt{map}/\texttt{foreach} methods, on average. That performance improvement is, in part, due to our choice to trade off the implicitly and programmatically duplicated code at the call site for the reduction of the megamorphic virtual calls, in this way alleviating one part of The Problem.
 
-Even if the \texttt{macroMap}/\texttt{macroForeach} iterators aren't particularly big or complex, this trade off's code duplication can blow out CPU's instruction cache in programs which use these methods heavily, affecting the performance negatively. Also, applying these transformations statically and eagerly at compile-time, lead us to a few more problems:
+Even if the \texttt{macroMap}/\texttt{macroForeach} iterators aren't particularly big or complex, this trade off's code duplication can blow out the CPU's instruction cache in programs which use these methods heavily, negatively affecting performance. Also, applying these transformations statically and eagerly at compile-time leads us to a few more problems:
 
 \begin{itemize}
- \item We cannot override a collection's \texttt{macroMap}/\texttt{macroForeach} methods, violating that way the Liskov's Substitution Principle~\cite{liskov1994behavioral}.
+ \item We cannot override a collection's \texttt{macroMap}/\texttt{macroForeach} methods, in this way violating the Liskov's Substitution Principle~\cite{liskov1994behavioral}.
  \item In code like \sv{Traversable[Int] tr = List(1,2,3); tr.macroMap(\_+1)}, \texttt{macroMap} will expand according to \texttt{tr}'s static type, so it won't expand to the most performant alternative.
 \end{itemize}
 
