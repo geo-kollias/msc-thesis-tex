@@ -190,7 +190,7 @@ that reason and without any loss of generality we will be referring only to
 default \texttt{map} method is defined too. Its definition is an unusual one:
 
 \begin{scalaCode}
-def macroMap[B, That](f0: A => B)(implicit bf: CanBuildFrom[Repr, B, That]): That = ???'
+def macroMap[B, That](f0: A => B)(implicit bf: CanBuildFrom[Repr, B, That]): That = ???
 \end{scalaCode}
 
 Instead of a usual implementation on the right hand side, we see a \texttt{???}. The \texttt{???}
